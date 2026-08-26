@@ -123,6 +123,27 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
+## Innovation Policy
+
+### Phase 1 — Small (5.5M) + Medium (25M): Traditional, From Scratch
+
+- Traditional decoder-only Transformer architecture
+- Every component implemented from scratch — no `nn.Transformer`, no `nn.MultiheadAttention`, no HuggingFace model libraries, no pre-built transformer layers
+- Only torch primitives (`nn.Linear`, `nn.Embedding`, `nn.LayerNorm`, tensor ops) as building blocks
+- Full mathematical transparency — every equation visible in code
+- No black-box replacements (AGENTS.md Rule 34)
+- The goal is to understand every component completely
+
+### Phase 2 — After Medium 25M is Complete: Innovation
+
+- Novel attention patterns, efficient FFN variants, positional encoding improvements
+- Training innovations — curriculum learning, adaptive scheduling, distillation
+- Memory efficiency — gradient checkpointing, parameter sharing, activation recomputation
+- Every innovation measured against the working traditional baseline
+- No claimed improvements without measurements (AGENTS.md Rule 48)
+
+---
+
 ## Key Decisions Made
 
 1. **Notebooks removed** — replaced with scripts/ for CLI-driven workflow (version-controllable, reproducible, no hidden state)
@@ -134,6 +155,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 7. **Pre-normalization architecture** — x = x + attn(norm(x)), x = x + ffn(norm(x))
 8. **Learned positional embeddings** — simpler for v1, RoPE/Sinusoidal in later experiments
 9. **No weight tying initially** — keeps architecture simple
+10. **From scratch only** — no pre-built transformer/encoder-decoder libraries, every component hand-written
 
 ---
 

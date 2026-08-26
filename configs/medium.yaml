@@ -1,0 +1,37 @@
+# AtlasLLM-Medium — Larger model for when VRAM allows
+# Requires careful VRAM monitoring on GTX 1070 8GB
+
+model:
+  vocab_size: 16000
+  context_length: 512
+  d_model: 384
+  n_layers: 8
+  n_heads: 8
+  d_ff: 1536
+  dropout: 0.1
+  bias: false
+
+training:
+  batch_size: 4
+  learning_rate: 2.0e-4
+  weight_decay: 0.1
+  max_steps: 200000
+  warmup_steps: 2000
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/train.bin"
+  val_path: "data/processed/val.bin"
+  tokenizer_path: "tokenizer/model"
+
+checkpoint:
+  dir: "checkpoints/medium"
+  save_every: 5000
+
+logging:
+  log_every: 200
+  val_every: 1000
+
+device: "auto"
+dtype: "float32"

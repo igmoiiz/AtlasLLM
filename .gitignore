@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PyTorch / ML
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+wandb/
+lightning_logs/
+
+# Data (large files should not be committed)
+data/raw/
+data/interim/
+data/processed/
+!data/README.md
+
+# Tokenizer models
+tokenizer/model/
+tokenizer/*.model
+
+# Logs
+logs/
+*.log
+tensorboard/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.local
+
+# Coverage
+htmlcov/
+.coverage
+coverage/

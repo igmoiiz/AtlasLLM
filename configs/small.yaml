@@ -1,0 +1,37 @@
+# AtlasLLM-Small — First training configuration
+# Target: GTX 1070 8GB VRAM
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  d_ff: 1024
+  dropout: 0.1
+  bias: false
+
+training:
+  batch_size: 8
+  learning_rate: 3.0e-4
+  weight_decay: 0.1
+  max_steps: 100000
+  warmup_steps: 1000
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/train.bin"
+  val_path: "data/processed/val.bin"
+  tokenizer_path: "tokenizer/model"
+
+checkpoint:
+  dir: "checkpoints"
+  save_every: 2000
+
+logging:
+  log_every: 100
+  val_every: 500
+
+device: "auto"
+dtype: "float32"

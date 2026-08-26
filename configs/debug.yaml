@@ -1,0 +1,37 @@
+# AtlasLLM-Debug — Minimal config for quick verification
+# Use for: overfit test, shape checks, gradient flow tests
+
+model:
+  vocab_size: 256
+  context_length: 32
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  d_ff: 128
+  dropout: 0.0
+  bias: false
+
+training:
+  batch_size: 2
+  learning_rate: 1.0e-3
+  weight_decay: 0.0
+  max_steps: 100
+  warmup_steps: 10
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/train.bin"
+  val_path: "data/processed/val.bin"
+  tokenizer_path: "tokenizer/model"
+
+checkpoint:
+  dir: "checkpoints/debug"
+  save_every: 50
+
+logging:
+  log_every: 10
+  val_every: 25
+
+device: "auto"
+dtype: "float32"

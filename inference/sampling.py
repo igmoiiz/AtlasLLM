@@ -54,14 +54,16 @@ def sample_next_token(
         scores = torch.where(scores < min_kept, _NEG_INF, scores)
 
     if top_p is not None and top_p < 1.0:
-        probs = torch.softmax(scores, dim=-1)
-        sorted_probs, sorted_ids = torch.sort(probs, dim=-1, descending=True)
+        # Work in sorted (rank) order: compute the nucleus on the sorted
+        # probabilities, censor the sorted scores, then scatter back into
+        # vocabulary order. The top-ranked token is always kept.
+        sorted_scores, sorted_ids = torch.sort(scores, dim=-1, descending=True)
+        sorted_probs = torch.softmax(sorted_scores, dim=-1)
         cumulative = torch.cumsum(sorted_probs, dim=-1)
-        # A token's probability is counted once strictly *before* the
-        # cumulative mass crosses p; the top id is always kept.
-        remove = cumulative - sorted_probs > top_p
-        remove[..., 0] = False
-        scores = torch.scatter(scores, -1, sorted_ids, torch.where(remove, _NEG_INF, scores))
+        keep_rank = (cumulative - sorted_probs) <= top_p
+        keep_rank[..., 0] = True
+        censored = torch.where(keep_rank, sorted_scores, _NEG_INF)
+        scores = torch.scatter(scores, -1, sorted_ids, censored)
 
     probs = torch.softmax(scores, dim=-1)
     probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(torch.finfo(probs.dtype).tiny)

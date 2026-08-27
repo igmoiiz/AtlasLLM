@@ -53,6 +53,20 @@ def test_top_p_keeps_dominant_token_only():
         assert tok.item() == 0
 
 
+def test_top_k_combined_with_top_p_is_safe_and_contained():
+    # Regression: top-p combined with top-k once corrupted the surviving set
+    # (all cells ended up silently -inf -> NaN -> multinomial crash) because
+    # the nucleus logic mixed vocab order with rank order.
+    logits = torch.randn(4, 64)
+    rng = torch.Generator().manual_seed(7)
+    tok = sample_next_token(logits, temperature=0.8, top_k=8, top_p=0.9, rng=rng)
+    assert tok.shape == (4,)
+    assert not torch.isnan(logits).any()
+    top8 = torch.topk(logits, 8, dim=-1).indices
+    for b in range(4):
+        assert tok[b].item() in top8[b].tolist()
+
+
 def test_high_temperature_spreads_distribution():
     # two near-equal tokens under a huge temperature should both appear.
     logits = torch.tensor([[2.0, 0.0]])

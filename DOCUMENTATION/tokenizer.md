@@ -66,11 +66,29 @@ The tokenizer is trained on the target corpus:
 python -m tokenizer.train_tokenizer --config configs/small.yaml
 ```
 
-Training parameters:
+Training parameters (from the `tokenizer:` section of the YAML config):
 - Vocabulary size: 16,000
 - Training algorithm: BPE
-- Character coverage: 1.0
 - Minimum frequency: 2
+- Special tokens: `<pad>`, `<unk>`, `<bos>`, `<eos>` (ids 0-3)
+
+The CLI cross-checks that `model.vocab_size >= tokenizer.vocab_size` and saves
+`stats.json` (chars, tokens, tokens/char, top tokens) next to the model.
+
+### Lossless design
+
+AtlasLLM's tokenizer uses **no pretokenizer and no normalizer**: BPE merges run
+over the raw character stream, so `encode`/`decode` is exactly lossless for
+in-vocabulary text (including whitespace runs, tabs, newlines, and unicode).
+
+A seed document containing every single-byte character (0x00-0xFF) is prepended
+during training so the full byte-letter alphabet always exists. Characters
+absent from the corpus and outside that alphabet map to `<unk>` (id 1) rather
+than being silently dropped.
+
+> Note: because the character alphabet is always kept, a corpus like WikiText
+> (≈1,200 distinct characters) needs `vocab_size ≥ ~1,280`; the debug config
+> uses 1,280, not 256.
 
 ## Saving and Loading
 
@@ -94,15 +112,18 @@ tokenizer/model/
 
 Tokenizer tests verify:
 
-1. **Encode → decode roundtrip** — `decode(encode(text)) == text`
-2. **Special token handling** — `<bos>`, `<eos>`, `<pad>`, `<unk>` work correctly
-3. **Vocabulary size** — matches expected count
+1. **Encode → decode roundtrip** — `decode(encode(text)) == text` for in-vocabulary text
+2. **Special token handling** — `<bos>`, `<eos>`, `<pad>`, `<unk>` have stable ids 0-3
+3. **Vocabulary size** — matches `get_vocab_size()`; all ids in range
 4. **Empty input** — handles gracefully
-5. **Unicode handling** — processes multi-byte characters correctly
+5. **Unicode handling** — processes accented and multi-byte characters correctly
+6. **Unknown tokens** — unseen characters map to `<unk>`, never silently dropped
 
 ## Design Decisions
 
 1. **16k vocabulary** — Large enough for reasonable coverage, small enough for manageable embedding tables
 2. **BPE** — Well-understood, widely used, good balance of compression and flexibility
-3. **No preprocessing** — The tokenizer handles tokenization; the data pipeline handles cleaning
-4. **Stable interface** — `encode()` and `decode()` signatures remain stable even if internals change
+3. **No pretokenizer/normalizer** — guarantees lossless encode↔decode roundtrip and keeps text handling transparent (the data pipeline handles cleaning)
+4. **Seeded single-byte alphabet** — all 256 byte letters always exist as base tokens, so ASCII/Latin-1 text never produces unknowns
+5. **`<unk>` for genuinely unseen characters** — unknown multi-byte characters map to `<unk>` visibly, never silently dropped
+6. **Stable interface** — `encode()` and `decode()` signatures remain stable even if internals change

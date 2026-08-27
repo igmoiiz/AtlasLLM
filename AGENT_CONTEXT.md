@@ -162,7 +162,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ```
 Stage 1 — Environment Setup        [x]
-Stage 2 — Tokenizer                [ ]
+Stage 2 — Tokenizer                [x]
 Stage 3 — Dataset Pipeline         [ ]
 Stage 4 — Transformer Implementation [ ]
 Stage 5 — Training Pipeline        [ ]
@@ -171,7 +171,7 @@ Stage 7 — Inference                [ ]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Stage 1 (Environment Setup) complete. All dependencies installed, CUDA verified, ruff clean. Next: Stage 2 — Tokenizer.
+**Current status:** Stages 1-2 complete. Tokenizer trained (16k vocab, WikiText-2). Next: Stage 3 — Dataset Pipeline.
 
 ---
 
@@ -201,6 +201,19 @@ Stage 8 — Evaluation + Documentation [ ]
 19. ✅ `pytest` — runs (0 tests collected; test files are still empty stubs)
 20. ✅ Added `.obsidian/` to .gitignore (editor config)
 
+### Stage 2 — Tokenizer (completed this session)
+
+21. ✅ Implemented `tokenizer/vocabulary.py` — special tokens `<pad>/<unk>/<bos>/<eos>` (ids 0-3)
+22. ✅ Implemented `tokenizer/tokenizer.py` — `AtlasTokenizer` wrapper (encode/decode/vocab/save/load/from_pretrained)
+23. ✅ Implemented `tokenizer/train_tokenizer.py` — BPE training CLI with stats + config-vocab consistency checks
+24. ✅ **Design:** char-level BPE, no pretokenizer/normalizer → exact lossless roundtrip; seeded 256-byte alphabet; unseen multibyte chars → `<unk>` (never silently dropped). Rejected ByteLevel (GPT-2 byte table corrupts multibyte chars) and byte_fallback (decode inserts spaces)
+25. ✅ Downloaded WikiText-2-raw → `data/raw/wikitext-2-raw/` (immutable); corpus = train+valid in `data/interim/wikitext-2-raw/`
+26. ✅ Trained tokenizers: small (16,000 vocab, 2.34M tokens, 12 MB corpus) + debug (1,280 vocab)
+27. ✅ Configs: added `tokenizer:` sections; debug vocab 256→1280 (wiki char alphabet ≈1211+specials needs ≥1280)
+28. ✅ Tests: 18 passing in `tests/test_tokenizer.py` (roundtrip, special ids, bos/eos, empty, unicode, unk, save/load)
+29. ✅ `ruff check` clean; data provenance documented in `data/README.md`; `DOCUMENTATION/tokenizer.md` updated
+30. ✅ Trained models saved to `tokenizer/model/small` and `tokenizer/model/debug` (git-ignored, reproducible via CLI)
+
 ---
 
 ## User Preferences
@@ -215,10 +228,10 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 2 — Tokenizer
+## Next Session: Stage 3 — Dataset Pipeline
 
-1. Implement tokenizer interface (`tokenizer/tokenizer.py`) with `encode`/`decode`/`save`/`load`
-2. Decide: train on WikiText-2-raw-v1 with HF `tokenizers` BPE, vocab 16,000 + special tokens
-3. Implement `training/train_tokenizer.py` (CLI) and download the dataset
-4. Vocabulary statistics + `encode ↔ decode` round-trip tests (`tests/test_tokenizer.py`)
-5. Commit: "feat: implement tokenizer training pipeline"
+1. Implement `data_pipeline` dataset abstraction (per AGENTS.md, one authoritative `Dataset` interface) that maps text → `[B, T]` tensors using the trained tokenizer for the LM task (shifted next-token prediction, batched)
+2. Implement streaming batched loader with reproducible shuffling + seed; `train`/`valid`/`test` splits from `data/interim/wikitext-2-raw/`
+3. Verify: dataset shapes, batched iteration, token coverage, no padding leakage into attention (document how padding is masked if variable-length batches are used)
+4. Add dataset smoke tests (shape `[B, T]`, token id range, deterministic seed, epoch iteration) in `tests/test_dataset.py`
+5. Commit: "feat: implement dataset pipeline"

@@ -59,3 +59,8 @@ tensorboard/
 htmlcov/
 .coverage
 coverage/
+
+# Editor scratch/artefacts (Obsidian)
+*.base
+*.canvas
+2026-0*-*.md

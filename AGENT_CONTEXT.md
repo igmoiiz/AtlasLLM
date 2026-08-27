@@ -292,6 +292,14 @@ Stage 8 — Evaluation + Documentation [ ]
 - **Root-cause bug:** periodic `last.pt` NEVER fired in any config — the trainer read `logging.save_every` (trainer.py) while all configs define `checkpoint.save_every`. Existing tests masked it (they only assert last.pt exists at run end, and the run-end save always writes it). Fixed: trainer now reads `checkpoint.save_every` (keeps `logging` fallback) + regression test (`test_save_every_reads_checkpoint_section`) → 84 tests. Commit `7fe6c50`, pushed.
 - **Resumed run:** `python -m training.train --config configs/small.yaml --resume checkpoints/run_20260827-210202/best.pt` → new dir `checkpoints/run_20260827-225205/` (PID 804), clean metrics.jsonl, LR restored correctly (2.89e-4 → cosine continuity, verified), train/val back on the pre-cutoff trajectory (val 6.843 @ step 14000 ≈ pre-cutoff 6.841@13000). Periodic last.pt verified live (fired at absolute step 14000). Logs: `%TEMP%\opencode\small_recovered.{out,err}.log`. Future cut cost ≤ 2000 steps (~2.5 min).
 
+**Second power cutoff (~step 21400 in run 225205) + recovery:**
+- Resumed from `run_20260827-225205/last.pt` (step 20000, periodic save fired correctly; only ~1400 steps lost). Verified `last.pt` contains step 20000 with no `.tmp` debris.
+- Relaunched: `python -m training.train --config configs/small.yaml --resume checkpoints/run_20260827-225205/last.pt` → **live run** `checkpoints/run_20260827-231105/` (PID 8224, logs `%TEMP%\opencode\small_resume3.{out,err}.log`). RESUMED AT 20K, NOT 13K (best.pt) — so it continues past the old best. By step 30k: train loss ~4.8 falling, val ~7.07 (drifting up from 6.84 best at step 13k → mild overfit signal, tracked in docs/training.md). LR 2.39e-4, cosine position correct. GPU 216.6 MB, ~20-28k tok/s.
+- **Resume gotcha:** each resume makes a NEW `run_<ts>/` dir; `best.pt` in it starts tracking from the resume point. Historical best (6.8413 @ 13000) lives in `run_20260827-210202/best.pt` — preserved if a final chat-test uses that instead.
+
+**Docs overhaul (commit `a686c5d`, pushed):**
+- Rewrote README + all `DOCUMENTATION/*.md`. Added a "For a beginner" section to every doc, honest status ("Done, tested" vs "PLANNED" for the stub packages), cross-links (every page links to index + neighbors; verified all links resolve), removed fabricated numbers (README ~5.5M params → measured 13M; hardware.md invented ~200k tok/s → measured ~26k; experiments.md invented comparison table → placeholders), removed em/en-dashes per user's no-AI-slop rule. Marked evaluation/safety/harness/monitoring as stubs (they truly are: empty .py files).
+
 ---
 
 ## User Preferences
@@ -302,15 +310,14 @@ Stage 8 — Evaluation + Documentation [ ]
 - Proprietary license with strict terms
 - Realistic about model capabilities (not claiming ChatGPT-level)
 - Educational focus — understanding > performance
-- Will scale to Medium (25M) after Small (5.5M) works
+- Will scale to Medium after Small (13M, measured) works
 
 ---
 
 ## Next Session: Stage 6 — training running; chat-test + evaluate
 
-1. Poll `%TEMP%\opencode\small_recovered.{out,err}.log` and `checkpoints/run_20260827-225205/metrics.jsonl`
-2. After the 100k run (or at `last.pt` checkpoints): `python -m scripts.chat --checkpoint checkpoints/run_20260827-225205/last.pt` and ask the SAME questions; compare between checkpoints (Stage 7 built for this)
-3. Watch train vs val loss for overfit; `--resume <run>/last.pt` resumes cleanly (verified twice live) and periodic last.pt now protects ≤2000-step loss on power cut
-4. Best-so-far history: 6.8413 (step 13000, killed run) → resumed run's own best tracks in `run_20260827-225205/best.pt`
-5. Do NOT change architecture during this stage; only hyperparameters if clearly broken
-6. Stage 8 (evaluation) starts once small training produces meaningful checkpoints
+1. Poll `%TEMP%\opencode\small_resume3.{out,err}.log` and `checkpoints/run_20260827-231105/metrics.jsonl` (PID 8224)
+2. When the run finishes (~step 100000): chat-test the final `last.pt` with the SAME questions used on the 2k-step model (and optionally compare against `run_20260827-210202/best.pt`, the true historical best at val 6.8413)
+3. Watch train vs val loss for overfit (val has drifted 6.84 → 7.07 by step 30k; decide whether the mild overfit changes the plan)
+4. Do NOT change architecture during this stage; only hyperparameters if clearly broken
+5. Stage 8 (evaluation) starts once small training produces meaningful checkpoints. Docs for it are already drafted in `DOCUMENTATION/experiments.md`, `harness.md` (honestly marked PLANNED; `evaluation/`, `safety/`, `harness/`, `monitoring/` are empty stubs)

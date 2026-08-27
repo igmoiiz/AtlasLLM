@@ -72,8 +72,8 @@ This file is the agent's persistent memory across sessions. Update it after ever
 | d_ff | 1,024 |
 | dropout | 0.1 |
 | bias | false |
-| ~Params | ~5.5M |
-| Est. VRAM | ~560 MB |
+| ~Params | 12.98M (measured) |
+| Measured VRAM | ~270 MB peak (fwd+bwd, batch 2 × ctx 128) |
 
 ### AtlasLLM-Medium (next target after Small is complete)
 
@@ -164,14 +164,14 @@ This file is the agent's persistent memory across sessions. Update it after ever
 Stage 1 — Environment Setup        [x]
 Stage 2 — Tokenizer                [x]
 Stage 3 — Dataset Pipeline         [x]
-Stage 4 — Transformer Implementation [ ]
+Stage 4 — Transformer Implementation [x]
 Stage 5 — Training Pipeline        [ ]
 Stage 6 — Real Training            [ ]
 Stage 7 — Inference                [ ]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Stages 1-3 complete. WikiText-2 tokenized to uint16 .bin datasets (16k small + 1280 debug). Next: Stage 4 — Transformer Implementation.
+**Current status:** Stages 1-4 complete. Transformer implemented from scratch in pure PyTorch (13M params, GPU-verified). Next: Stage 5 — Training Pipeline.
 
 ---
 
@@ -226,6 +226,19 @@ Stage 8 — Evaluation + Documentation [ ]
 38. ✅ Gotcha: `python -m pkg.sub` fails (runpy RuntimeWarning) if `__init__.py` imports the target submodule — `data_pipeline/__init__.py` re-exports only `TextDataset` (mirrors tokenizer package)
 39. ✅ `ruff check` clean; `data/README.md` + `DOCUMENTATION/dataset.md` synced (cleaning pipeline documented as deferred for Phase-2 corpora)
 
+### Stage 4 — Transformer Implementation (completed this session)
+
+40. ✅ `model/config.py` — frozen `ModelConfig` dataclass (vocab_size, context_length, d_model, n_layers, n_heads, d_ff, dropout, bias) + validation (n_heads divides d_model, positivity, dropout range) + `from_dict` for YAML `model:` sections; unknown fields rejected
+41. ✅ `model/normalization.py` — LayerNorm from explicit tensor math (population variance, learns gamma/beta; no nn.LayerNorm)
+42. ✅ `model/attention.py` — MultiHeadCausalAttention: Q=XWq/K=XWk/V=XWv, scores = QKᵀ/√d_k, explicit triu -inf causal mask, softmax, concat + Wo; dropout on probs + residual
+43. ✅ `model/feed_forward.py` (GELU), `model/embeddings.py` (TokenEmbedding), `model/positional_encoding.py` (learned pos emb), `model/transformer_block.py` (pre-norm: x = x + attn(ln1(x)); x = x + ffn(ln2(x)))
+44. ✅ `model/atlas_llm.py` — AtlasLLM (embed + pos → N blocks → ln_f → lm_head(no bias)); pure: tensors in, logits out; rejects seq > context_length
+45. ✅ `training/loss.py` — `lm_cross_entropy` flattens any [.., V] logits vs targets, `ignore_index` for padding (unused)
+46. ✅ Tests: 53 passing (24 new: attention output shape, causal invariance at attention + model level, numerical match vs naive per-head reference, grad flow, per-head splits, single-token, model shapes, loss = log V on uniform logits, loss floor with perfect pred, state_dict roundtrip = checkpoint reload, deterministic seed init, context-length guard, pos-emb learnable/differing, no weight tying, config validation)
+47. ✅ Gotchas: torch RNG consumed by forward — seed BEFORE construction AND reuse input tensor in tests; loss must accept 2D logits too
+48. ✅ GPU smoke (small config): params 12,982,784 (13M); loss drops 9.83→9.43 over 2 steps; AdamW step works; peak GPU 267.6 MB; logits [2,128,16000]
+49. ✅ Corrected stale "~5.5M" estimates in architecture.md + AGENT_CONTEXT → measured 13M (~5.5M assumed weight tying or smaller head)
+
 ---
 
 ## User Preferences
@@ -240,10 +253,10 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 4 — Transformer Implementation
+## Next Session: Stage 5 — Training Pipeline
 
-1. Implement `model/` from scratch in pure PyTorch (pre-normalization per CONTEXT §19-20): `embeddings.py`, `attention.py` (causal, explicit mask, multi-head), `feed_forward.py` (GELU), `normalization.py` (LayerNorm), `transformer_block.py`, `atlas_llm.py` (full model + LM head). Learned positional embeddings (Decision 8)
-2. Shape contract: `[B,T] → [B,T,D] → logits [B,T,V]`; explicit causal mask
-3. Implement `training/loss.py` (cross-entropy, only after taking `loss.py` into account — CONTEXT §22)
-4. Mandatory tests (AGENTS.md Rule 23): shapes, causal masking (future tokens do not affect earlier predictions — must test explicitly), attention dimensions, gradient flow, block forward, full-model forward, loss
-5. Commit: "feat: implement Transformer architecture"
+1. Implement `training/trainer.py` — training loop orchestration: data → model → loss → optimizer (AdamW) → scheduler (linear warmup + cosine decay) → gradient clipping → metrics (loss, val loss, lr, tokens/sec, GPU mem, grad norm) → checkpointing
+2. Implement `training/optimizer.py`/`training/scheduler.py` only if they add genuine value; otherwise construct inline in trainer (config-driven)
+3. Implement `training/checkpoint.py` — save/load state: model + optimizer + scheduler + step + config (Rule per CONTEXT §27); training resumable
+4. CLI `training/train.py --config configs/debug.yaml` → tiny overfit test (Rule 24 mandatory before real pretraining): model must overfit debug dataset
+5. Tests: `tests/test_checkpoint.py` + training-loop smoke; commit: "feat: implement training pipeline"

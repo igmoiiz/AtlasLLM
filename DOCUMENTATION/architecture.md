@@ -44,7 +44,10 @@ Vocabulary Logits
 
 ## Parameter Count
 
-~5.5 million parameters (AtlasLLM-Small).
+~13M parameters (AtlasLLM-Small, measured 12,982,784). Breakdown: token
+embedding 4.10M + LM head 4.10M (no weight tying) + 6 transformer blocks 4.72M
++ positional embeddings 0.07M. Peak GPU memory during a forward+backward step
+with batch 2 × context 128: ~268 MB.
 
 ## Components
 
@@ -141,9 +144,9 @@ Optionally, the LM head can share weights with the token embedding (`weight_tyin
 
 | Variant | Layers | d_model | Heads | d_ff | ~Params | VRAM Est. |
 |---------|--------|---------|-------|------|---------|-----------|
-| Small   | 6      | 256     | 8     | 1024 | ~5.5M   | <1 GB     |
-| Medium  | 8      | 384     | 8     | 1536 | ~25M    | ~1.5 GB   |
-| Large   | 12     | 512     | 8     | 2048 | ~85M    | ~3 GB     |
+| Small   | 6      | 256     | 8     | 1024 | 13M (measured) | ~270 MB    |
+| Medium  | 8      | 384     | 8     | 1536 | ~26M   | ~1.5 GB   |
+| Large   | 12     | 512     | 8     | 2048 | ~85M   | ~3 GB     |
 
 ## Design Decisions
 

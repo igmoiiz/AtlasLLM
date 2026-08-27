@@ -1,0 +1,41 @@
+"""Pre-normalization transformer block.
+
+    x = x + attention(LayerNorm(x))
+    x = x + ffn(LayerNorm(x))
+
+Normalizing before (not after) the residual branches gives more stable
+gradients and matches modern transformer practice.
+"""
+
+import torch
+from torch import nn
+
+from model.attention import MultiHeadCausalAttention
+from model.config import ModelConfig
+from model.feed_forward import FeedForward
+from model.normalization import LayerNorm
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, config: ModelConfig):
+        super().__init__()
+        self.ln1 = LayerNorm(config.d_model)
+        self.attn = MultiHeadCausalAttention(
+            d_model=config.d_model,
+            n_heads=config.n_heads,
+            dropout=config.dropout,
+            bias=config.bias,
+        )
+        self.ln2 = LayerNorm(config.d_model)
+        self.ffn = FeedForward(
+            d_model=config.d_model,
+            d_ff=config.d_ff,
+            dropout=config.dropout,
+            bias=config.bias,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: [B, T, D]
+        x = x + self.attn(self.ln1(x))
+        x = x + self.ffn(self.ln2(x))
+        return x

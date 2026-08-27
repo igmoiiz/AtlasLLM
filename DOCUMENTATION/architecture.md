@@ -2,6 +2,19 @@
 
 AtlasLLM is a small dense decoder-only Transformer language model.
 
+## For a beginner
+
+A Transformer is a neural network arranged as a stack of repeated "blocks". Each block does two jobs:
+
+1. **Look at the other words** (attention). The word at position *i* gathers helpful information from all words that came before it.
+2. **Think locally** (feed-forward network). A small two-layer network transforms each word's representation on its own.
+
+Every block output is added to its input (a "residual" connection), which lets information flow through many blocks without degrading. After the last block, a final layer turns each position into a score for every word in the vocabulary; the highest score is the model's next-word guess.
+
+This model is **decoder-only**: it only ever reads the words to the left, never the words to the right. That property makes it a language model (predict the next word). It is **dense** (every block uses all of its parameters for every token) and **small** (13M parameters, trainable on a GTX 1070).
+
+Related reading: the rest of this page is the technical description. See [index.md](index.md) for the full picture.
+
 ## Overview
 
 ```
@@ -133,7 +146,7 @@ Pre-normalization is used because it provides more stable training gradients com
 
 ```python
 x = final_layer_norm(x)        # [B, T, D]
-logits = lm_head(x)            # [B, T, V] — V=16000
+logits = lm_head(x)            # [B, T, V] - V=16000
 ```
 
 The LM head is a linear projection from hidden dimension to vocabulary size.
@@ -150,15 +163,24 @@ Optionally, the LM head can share weights with the token embedding (`weight_tyin
 
 ## Design Decisions
 
-1. **Pre-normalization** — More stable gradients, standard in modern Transformers
-2. **Learned positional embeddings** — Simpler than RoPE for initial implementation
-3. **No bias** — Reduces parameter count, often slightly better performance
-4. **GELU activation** — Smooth activation, standard in Transformers
-5. **No weight tying (initially)** — Keeps the architecture simple; can be added later
+1. **Pre-normalization** - More stable gradients, standard in modern Transformers
+2. **Learned positional embeddings** - Simpler than RoPE for initial implementation
+3. **No bias** - Reduces parameter count, often slightly better performance
+4. **GELU activation** - Smooth activation, standard in Transformers
+5. **No weight tying (initially)** - Keeps the architecture simple; can be added later
 
 ## Limitations
 
 - Maximum sequence length is fixed at configuration time
 - No FlashAttention (GTX 1070 Pascal architecture does not support it efficiently)
 - No gradient checkpointing (small model, not needed yet)
-- No quantization (training in FP32/FP16 only)
+- No quantization (FP32 default; FP16 configurable via `dtype: float16`)
+
+## Related documentation
+
+- [index.md](index.md) - documentation entry point
+- [training.md](training.md) - how the model is optimized and checkpointed
+- [inference.md](inference.md) - how the trained model generates text
+- [tokenizer.md](tokenizer.md) - how text becomes token IDs
+- [dataset.md](dataset.md) - how token IDs become training batches
+- [configs/small.yaml](../configs/small.yaml) - the canonical configuration

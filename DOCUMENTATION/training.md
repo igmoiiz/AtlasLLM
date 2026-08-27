@@ -1,6 +1,19 @@
 # Training Pipeline
 
-AtlasLLM training system — from data loading to checkpointing.
+AtlasLLM training system - from data loading to checkpointing.
+
+## For a beginner
+
+Training teaches the model by example. For every token in the training text, the model guesses what comes next, and the loss function measures how wrong that guess was. The optimizer then nudges the model's internal numbers in the direction that would have made the guess better. Repeating this millions of times across billions of tokens is what produces a language model.
+
+Key ideas:
+
+- **Loss** - one number that says how bad today's predictions were. It starts near a floor (for a 16k vocabulary, uniform guessing gives loss about 9.68) and drops as the model learns.
+- **Learning rate** - how large each correction step is. The run warms up slowly, then decays on a cosine curve, so early steps don't overshoot and later steps settle cleanly.
+- **Checkpointing** - a snapshot of the model, optimizer, and schedule so training can be paused, resumed, or interrupted without losing work. The trainer writes atomic checkpoints (write to `.tmp`, then rename) so a crash cannot corrupt them.
+- **Validation** - periodically measuring loss on text the model never trained on. If training loss drops but validation loss rises, the model is memorizing instead of learning.
+
+Anything below this line is the technical description. See [index.md](index.md) for the full picture.
 
 ## Overview
 
@@ -126,9 +139,9 @@ Metrics logged at each step:
 | gpu_memory | GPU VRAM usage |
 
 Logging targets:
-- **Console** — one line per `logging.log_every` steps
-- **`metrics.jsonl`** — machine-readable, one JSON object per logged step
-- **TensorBoard** — optional, enabled with `logging.tensorboard: true`
+- **Console** - one line per `logging.log_every` steps
+- **`metrics.jsonl`** - machine-readable, one JSON object per logged step
+- **TensorBoard** - optional, enabled with `logging.tensorboard: true`
 
 Validation loss is capped at `logging.max_val_batches` batches for speed.
 
@@ -183,5 +196,27 @@ train loss `7.29 -> 5.04` (uniform floor for a 1280-vocab char LM is `ln 1280 �
 warmup + cosine schedule visible; best val `4.84`; checkpoints + resume verified.
 
 Tiny-overfit test (AGENTS.md rule 24), 512-token stream memorized on GPU:
-loss `7.27 -> 0.039` over 300 steps — full dataset → tokenizer → model → loss
+loss `7.27 -> 0.039` over 300 steps - full dataset → tokenizer → model → loss
 → optimizer → backward path proven before pretraining.
+
+## Measured performance (run: 100k steps, small config)
+
+- Throughput: ~26,000 tokens/sec (~13 steps/sec at batch 8 × context 256)
+- GPU memory: ~217 MB during training steps
+- Checkpoint size: ~156 MB (`last.pt` / `best.pt`)
+- Best validation loss so far: ~6.84 (reached around step 13,000). The current
+  run, interrupted twice and resumed at steps 13k and 20k, continues past that
+  point with train loss still falling but validation loss drifting up toward
+  ~7.1 by step 30k, a mild overfitting signal worth tracking
+
+Full hardware context in [hardware.md](hardware.md).
+
+## Related documentation
+
+- [index.md](index.md) - documentation entry point
+- [hardware.md](hardware.md) - device strategy and memory budget
+- [dataset.md](dataset.md) - where the training batches come from
+- [architecture.md](architecture.md) - what the optimizer is training
+- [tokenizer.md](tokenizer.md) - how text is tokenized first
+- [inference.md](inference.md) - how the trained checkpoint is used
+- [training/train.py](../training/train.py) - training entry point

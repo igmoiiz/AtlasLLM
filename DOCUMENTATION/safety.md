@@ -1,10 +1,27 @@
-# Safety System
+# Safety System (Design)
 
-AtlasLLM guardrails — input and output filtering external to the base model.
+AtlasLLM guardrails - input and output filtering external to the base model.
+
+> **Status: PLANNED.** The `safety/` package currently contains stub modules
+> (`policy.py`, `input_filter.py`, `output_filter.py`, `guardrails.py`), all
+> with no implementation. This page is the agreed design that implementation
+> must follow. Nothing here should be described as working.
+
+## For a beginner
+
+Language models are tools, not judges. A small model trained only to predict text has no understanding of whether its words are harmful, and it can be tricked by wording it has never seen. The safety system is a separate wrapper around the model, like a gatekeeper at the door:
+
+1. **Input gate** - reads the user's request before the model sees it, and lets it through, flags it, or refuses it.
+2. **Model** - generates a response.
+3. **Output gate** - checks the response before the user sees it, and returns it, warns, or blocks it.
+
+The key idea is separation: the model itself stays a plain language model, and all safety decisions happen in dedicated layers around it. A gatekeeper that blocks clearly, rejects quietly, and is honest about its limits beats a system that silently pretends to be safe.
+
+Anything below this line is the technical design. See [index.md](index.md) for the project overview.
 
 ## Architecture
 
-```
+```text
 User Input
      ↓
 Input Guardrail → classify request
@@ -16,7 +33,7 @@ Output Guardrail → check response
 Final Response
 ```
 
-**Key principle:** Safety is external to the base model. The model is a language model. Safety is a separate system.
+**Key principle:** Safety is external to the base model. The model is a language model. Safety is a separate system (AGENTS.md rule 11).
 
 ## Input Guardrail
 
@@ -34,7 +51,7 @@ Classifies incoming requests:
 - **Ambiguous:** Potentially sensitive topics requiring context
 - **Blocked:** Clearly harmful requests
 
-### Implementation
+### Planned Implementation
 
 ```python
 class InputGuardrail:
@@ -103,7 +120,7 @@ All safety decisions are logged:
 
 ## Testing
 
-Safety tests verify:
+Safety tests will verify:
 
 1. Allowed prompts pass through
 2. Blocked prompts are caught
@@ -111,9 +128,27 @@ Safety tests verify:
 4. Output filtering catches policy violations
 5. Refusal messages are appropriate
 
+These tests belong in `tests/test_safety.py` (currently empty).
+
 ## Design Decisions
 
-1. **External to model** — The base model remains reusable for fine-tuning
-2. **Policy-driven** — Rules are configurable, not hardcoded
-3. **Explicit limitations** — No false safety claims
-4. **Logged decisions** — Audit trail for testing and improvement
+1. **External to model** - The base model remains reusable for fine-tuning
+2. **Policy-driven** - Rules are configurable, not hardcoded
+3. **Explicit limitations** - No false safety claims
+4. **Logged decisions** - Audit trail for testing and improvement
+
+## Implementation checklist
+
+- [ ] Implement `safety/policy.py` (policy loading and matching)
+- [ ] Implement `safety/input_filter.py` (`InputGuardrail`)
+- [ ] Implement `safety/output_filter.py` (`OutputGuardrail`)
+- [ ] Implement `safety/guardrails.py` (combined pipeline = input + output)
+- [ ] Wire guardrails into the chat CLI (`scripts/chat.py`)
+- [ ] Write the tests listed under Testing above
+
+## Related documentation
+
+- [index.md](index.md) - documentation entry point
+- [harness.md](harness.md) - where safety behavior gets tested at scale
+- [inference.md](inference.md) - the model path the guardrails wrap
+- [CONTEXT.md](../CONTEXT.md) - original safety requirements (sections 41-44)

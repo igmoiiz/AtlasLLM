@@ -1,6 +1,17 @@
 # Dataset Pipeline
 
-AtlasLLM data pipeline — from raw text to training batches.
+AtlasLLM data pipeline - from raw text to training batches.
+
+## For a beginner
+
+Models learn from examples, and the raw material is plain text. The data pipeline turns that text into the exact form the model trains on:
+
+1. **Collect raw text** into `data/raw/` (immutable; never edited). This project ships no bundled data, so documents what you add in `data/README.md`.
+2. **Split** the text into training, validation, and test parts *before* any tokenization, so no validation text leaks into training.
+3. **Tokenize** each part with the tokenizer, then store the result as raw number arrays (`.bin` files) for speed.
+4. **Build batches**: cut the token stream into fixed-length windows. Each window is a puzzle - the model sees tokens 1..T and must predict tokens 2..T+1.
+
+Anything below this line is the technical description. See [index.md](index.md) for the full picture.
 
 ## Overview
 
@@ -31,7 +42,7 @@ DataLoader → Training Loop
 
 ```
 data/
-├── raw/              # Immutable original data — NEVER modify
+├── raw/              # Immutable original data - NEVER modify
 ├── interim/          # Intermediate processing results
 ├── processed/        # Final tokenized data
 │   ├── train.bin     # Training token IDs (uint16)
@@ -63,11 +74,11 @@ and paragraph breaks (the tokenizer is lossless). The cleaning pipeline below is
 reserved for lower-quality corpora (Phase 2, OpenWebText) and must never silently
 modify the immutable `data/raw/` sources.
 
-### Step 1 — Unicode Normalization
+### Step 1 - Unicode Normalization
 
 Normalize all text to NFC (Canonical Decomposition followed by Canonical Composition).
 
-### Step 2 — Whitespace Normalization
+### Step 2 - Whitespace Normalization
 
 - Replace tabs with spaces
 - Collapse multiple spaces
@@ -75,17 +86,17 @@ Normalize all text to NFC (Canonical Decomposition followed by Canonical Composi
 - Strip trailing whitespace
 - Preserve meaningful paragraph breaks
 
-### Step 3 — Deduplication
+### Step 3 - Deduplication
 
 Exact deduplication at the document level.
 
-### Step 4 — Quality Filtering
+### Step 4 - Quality Filtering
 
 - Remove documents shorter than 100 characters
 - Remove documents with excessive special characters
 - Remove non-UTF-8 sequences
 
-### Step 5 — Length Filtering
+### Step 5 - Length Filtering
 
 Remove extremely short records that provide no learning signal.
 
@@ -179,7 +190,7 @@ batch["targets"]    # [B, T] torch.long, input shifted by one token
 
 ## Dataset Requirements
 
-- **Size:** 10–100 MB of clean text for initial training
+- **Size:** 10-100 MB of clean text for initial training
 - **Language:** English (initially)
 - **License:** Public domain or permissive
 - **Quality:** Clean, well-formed text without excessive noise
@@ -188,5 +199,12 @@ batch["targets"]    # [B, T] torch.long, input shifted by one token
 
 1. Place raw files in `data/raw/`
 2. Document provenance in `data/README.md`
-3. Run preprocessing: `python -m data_pipeline.preprocessing --input data/raw/ --output data/processed/`
+3. Run preprocessing: `python -m data_pipeline.preprocessing --config configs/small.yaml`
 4. Verify output: `python -m scripts.inspect_dataset --data data/processed/train.bin`
+
+## Related documentation
+
+- [index.md](index.md) - documentation entry point
+- [tokenizer.md](tokenizer.md) - how text is tokenized during preprocessing
+- [training.md](training.md) - how the resulting batches are consumed
+- [scripts/inspect_dataset.py](../scripts/inspect_dataset.py) - verification utility

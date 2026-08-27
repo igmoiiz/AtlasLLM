@@ -2,6 +2,18 @@
 
 AtlasLLM uses a subword tokenizer for converting text to token IDs and back.
 
+## For a beginner
+
+A model does not read text as a human does; it works with numbers. The tokenizer is the translator between the two worlds:
+
+```text
+"don't panic"  --encode-->  [274, 39, 8801]   --decode-->  "don't panic"
+```
+
+It cuts text into pieces ("tokens"). A token is usually a word or a frequent part of a word (like "don" and "'t"). Having a fixed vocabulary of 16,000 pieces keeps the model small while still covering nearly all text. This project's tokenizer is deliberately **lossless**: any text made of characters the vocabulary knows survives the round trip through encode then decode exactly, including weird spacing and unicode.
+
+The tokenizer is trained on the project's own corpus, then stays fixed during model training. Anything below this line is the technical description. See [index.md](index.md) for the full picture.
+
 ## Overview
 
 ```
@@ -14,7 +26,7 @@ Raw Text: "The cat sat on the mat"
 
 ## Library
 
-**Hugging Face Tokenizers** — chosen over SentencePiece for:
+**Hugging Face Tokenizers** - chosen over SentencePiece for:
 
 - Faster training
 - Better Python API
@@ -33,10 +45,10 @@ Raw Text: "The cat sat on the mat"
 
 | Token | ID | Purpose |
 |-------|-----|---------|
-| `<pad>` | 0 | Padding — fill shorter sequences to uniform length |
-| `<unk>` | 1 | Unknown — fallback for unseen subwords |
-| `<bos>` | 2 | Beginning of sequence — marks sequence start |
-| `<eos>` | 3 | End of sequence — marks sequence end |
+| `<pad>` | 0 | Padding - fill shorter sequences to uniform length |
+| `<unk>` | 1 | Unknown - fallback for unseen subwords |
+| `<bos>` | 2 | Beginning of sequence - marks sequence start |
+| `<eos>` | 3 | End of sequence - marks sequence end |
 
 ## Interface
 
@@ -112,18 +124,25 @@ tokenizer/model/
 
 Tokenizer tests verify:
 
-1. **Encode → decode roundtrip** — `decode(encode(text)) == text` for in-vocabulary text
-2. **Special token handling** — `<bos>`, `<eos>`, `<pad>`, `<unk>` have stable ids 0-3
-3. **Vocabulary size** — matches `get_vocab_size()`; all ids in range
-4. **Empty input** — handles gracefully
-5. **Unicode handling** — processes accented and multi-byte characters correctly
-6. **Unknown tokens** — unseen characters map to `<unk>`, never silently dropped
+1. **Encode → decode roundtrip** - `decode(encode(text)) == text` for in-vocabulary text
+2. **Special token handling** - `<bos>`, `<eos>`, `<pad>`, `<unk>` have stable ids 0-3
+3. **Vocabulary size** - matches `get_vocab_size()`; all ids in range
+4. **Empty input** - handles gracefully
+5. **Unicode handling** - processes accented and multi-byte characters correctly
+6. **Unknown tokens** - unseen characters map to `<unk>`, never silently dropped
 
 ## Design Decisions
 
-1. **16k vocabulary** — Large enough for reasonable coverage, small enough for manageable embedding tables
-2. **BPE** — Well-understood, widely used, good balance of compression and flexibility
-3. **No pretokenizer/normalizer** — guarantees lossless encode↔decode roundtrip and keeps text handling transparent (the data pipeline handles cleaning)
-4. **Seeded single-byte alphabet** — all 256 byte letters always exist as base tokens, so ASCII/Latin-1 text never produces unknowns
-5. **`<unk>` for genuinely unseen characters** — unknown multi-byte characters map to `<unk>` visibly, never silently dropped
-6. **Stable interface** — `encode()` and `decode()` signatures remain stable even if internals change
+1. **16k vocabulary** - Large enough for reasonable coverage, small enough for manageable embedding tables
+2. **BPE** - Well-understood, widely used, good balance of compression and flexibility
+3. **No pretokenizer/normalizer** - guarantees lossless encode↔decode roundtrip and keeps text handling transparent (the data pipeline handles cleaning)
+4. **Seeded single-byte alphabet** - all 256 byte letters always exist as base tokens, so ASCII/Latin-1 text never produces unknowns
+5. **`<unk>` for genuinely unseen characters** - unknown multi-byte characters map to `<unk>` visibly, never silently dropped
+6. **Stable interface** - `encode()` and `decode()` signatures remain stable even if internals change
+
+## Related documentation
+
+- [index.md](index.md) - documentation entry point
+- [dataset.md](dataset.md) - how tokenized text becomes training batches
+- [training.md](training.md) - how the tokenized data is used in training
+- [tokenizer/tokenizer.py](../tokenizer/tokenizer.py) - the implementation

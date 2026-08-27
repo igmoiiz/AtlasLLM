@@ -4,7 +4,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-08-27
+## Last Updated: 2026-08-28
 
 ---
 
@@ -302,6 +302,78 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
+## Overfit Diagnosis and Data Upgrade (2026-08-28)
+
+### The problem: WikiText-2 is ~50x too small for a 13M-parameter model
+
+The full 100k-step small.yaml run finished as a clean baseline (run `run_20260827-231105/`, PID 8224):
+train loss 3.68, **val loss 7.49** at step 100k. The gap (3.8 nats) is severe, monotonic
+overfitting, and it was present long before the end:
+
+- Val loss bottomed at **6.8413 (step 13,000)** then climbed every eval: 6.97 (20k) → 7.07 (30k)
+  → 7.20 (40k) → 7.26 (50k) → 7.32 (58k) → 7.49 (100k).
+- Train loss kept falling (4.09 @ 58k → 3.68 @ 100k) — textbook memorization.
+
+**Root cause is arithmetic, not a hyperparameter bug:** `train.bin` holds **2,116,813 tokens**
+(corpus ~12 MB) while the model has **12,982,784 parameters** (~6.1 tokens/parameter;
+Chinchilla-scale would want ~20+). The 100k-step run processes 8×256 = 2,048 tokens/step =
+**204.8M tokens = ~97 epochs over the 2.1M-token corpus.** No dropout/LR/wd tweak fixes a
+~97-epoch memorization run; the model simply needs ~50x more data.
+
+### The fix: WikiText-103 (same source family, ~108M train tokens)
+
+- Downloaded raw WikiText-103 (`Salesforce/wikitext`, config `wikitext-103-raw-v1`) →
+  `data/raw/wikitext-103-raw/{train,valid,test}.txt` (train 538 MB, 1.8M rows; valid ~1.0 MB;
+  test ~1.2 MB). Provenance added to `data/README.md`.
+- Same model/schedule as small.yaml, only data + tokenizer paths changed →
+  new config `configs/wikitext103.yaml`.
+- **Tokens:** train **107,946,880** / val 224,705 / test 258,166 (16k BPE, ctx 256).
+  Same 100k-step budget ≈ **1.9 epochs** over the train set — a healthy pretraining regime.
+
+### Problems encountered and their fixes (all committed)
+
+1. **BPE tokenizer OOM on the full corpus.** `tokenizer/train_tokenizer.py` trains with NO
+   pretokenizer (char-level, lossless roundtrip by design). A single `train_from_iterator`
+   pass over the 539 MB concat corpus ballooned to 22+ GB RAM — was heading for an OOM kill.
+   **Fix (config-level):** train the 16k vocab on `corpus_sample.txt` = every 10th line of
+   `corpus.txt` (1/10 systematic sample, ~54 MB). A 16k vocabulary is statistically identical
+   for this text domain; documented in `configs/wikitext103.yaml`. The tokenizer trained in
+   ~154 s and produced sensible top tokens (`and `, `to `, `. \n`, `in `, ...).
+2. **Whole-file encode failed.** `data_pipeline/preprocessing.py` read the entire 538 MB file
+   and called `tokenizer.encode()` once → Rust `memory allocation of 8612709328 bytes failed`.
+   **Fix (code, all corpus sizes benefit):** `tokenize_to_bin` now streams the file in
+   100,000-char chunks, encoding each separately and appending uint16 to the .bin. Peak memory
+   is flat. Cost: one token-merging boundary artifact per chunk (~1 token per 100k chars) —
+   negligible. Same numeric overflow guard kept. All 84 tests still pass.
+3. **Data-source availability.** The classic s3 URL (`.../wikitext/wikitext-103-raw-v1.zip`)
+   returns 301 with no Location (dead). HuggingFace LFS cdn was unreachable in one probe, but
+   the `datasets` streaming path (`Salesforce/wikitext`, `wikitext-103-raw-v1`) worked — one
+   transient read timeout auto-retried and succeeded. Internet works for HF datasets; direct s3
+   legacy links do not.
+
+### Trainer throughput and VRAM on the new run (measured on launch, before stop)
+
+`checkpoints/wikitext103/run_20260828-011005/` (PID 15928, stopped at my request so the user
+could game/sleep): at step ~900/100k, train loss 8.61 (ln16000=9.68 floor; within warmup LR
+2.7e-4), 27.5k tok/s, GPU 216.6 MB, grad_norm ~0.46. Startup is entirely healthy.
+
+### Next steps (deferred — user asked to stop and free resources)
+
+1. Relaunch: `python -m training.train --config configs/wikitext103.yaml` (fresh run, no resume
+   needed; the early stop left no useful state to continue from, but `last.pt` IS preserved at
+   `checkpoints/wikitext103/run_20260828-011005/last.pt` if preferred — resuming would inherit
+   its LR/scheduler position at ~step 900).
+2. Expected runtime: 100k steps ≈ 2.2 h at ~26k tok/s, GPU 216.6 MB — fits the GTX 1070 easily
+   and is short enough to run overnight or during a work block.
+3. Watch val at the first evals: expectation is val falls through the run (train ~near-pareto
+   on 108M tokens, NOT a memorize split like the 2.1M-token run).
+4. Skip chat-test until at least ~25-50k steps; the model is far from coherent early.
+5. Once this run completes: full eval suite (Stage 8) against a checkpoint with a real
+   learning curve, and compare val-PPL vs the WikiText-2 run for the docs' "what not to do"
+   section.
+
+---
+
 ## User Preferences
 
 - Clean, well-documented project
@@ -314,10 +386,17 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 6 — training running; chat-test + evaluate
+## Next Session: Stage 6 — WikiText-103 training; chat-test + evaluate
 
-1. Poll `%TEMP%\opencode\small_resume3.{out,err}.log` and `checkpoints/run_20260827-231105/metrics.jsonl` (PID 8224)
-2. When the run finishes (~step 100000): chat-test the final `last.pt` with the SAME questions used on the 2k-step model (and optionally compare against `run_20260827-210202/best.pt`, the true historical best at val 6.8413)
-3. Watch train vs val loss for overfit (val has drifted 6.84 → 7.07 by step 30k; decide whether the mild overfit changes the plan)
-4. Do NOT change architecture during this stage; only hyperparameters if clearly broken
-5. Stage 8 (evaluation) starts once small training produces meaningful checkpoints. Docs for it are already drafted in `DOCUMENTATION/experiments.md`, `harness.md` (honestly marked PLANNED; `evaluation/`, `safety/`, `harness/`, `monitoring/` are empty stubs)
+1. Relaunch the overfit fix: `python -m training.train --config configs/wikitext103.yaml`
+   (108M-token corpus, ~1.9 epochs over 100k steps, ~2.2 h on GTX 1070). Optionally instead
+   resume the early-stopped step-900 snapshot: `--resume checkpoints/wikitext103/run_20260828-011005/last.pt`.
+2. Expect val loss to FALL through the run (unlike the WikiText-2 run where val rose 6.84→7.49).
+   If val plateaus or rises while train falls, the corpus is still too small — next lever is
+   larger data (OpenWebText subset, ~50-90 MB stream per the dataset strategy).
+3. Chat-test with the SAME questions used previously once the run is past ~25-50k steps; compare
+   against `run_20260827-210202/best.pt` (val 6.8413, the WikiText-2 best) as the baseline.
+4. Do NOT change architecture during this stage; only hyperparameters if clearly broken.
+5. Stage 8 (evaluation) starts once this run produces meaningful checkpoints. Docs drafted in
+   `DOCUMENTATION/experiments.md`, `harness.md` (honestly marked PLANNED; `evaluation/`,
+   `safety/`, `harness/`, `monitoring/` are empty stubs).

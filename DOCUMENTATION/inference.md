@@ -126,10 +126,17 @@ Stop generation when:
 
 ## Interface
 
+The engine loads a checkpoint and completes prompts. The tokenizer and model
+configuration come from the training config (explicitly via ``--config``, or
+from the checkpoint itself for runs trained on Stage 6+ of the pipeline):
+
 ```python
 from inference.engine import InferenceEngine
 
-engine = InferenceEngine.from_checkpoint("checkpoints/best.pt")
+engine = InferenceEngine.from_checkpoint(
+    "checkpoints/best.pt",
+    config="configs/debug.yaml",  # optional for Stage 6+ checkpoints
+)
 
 output = engine.generate(
     prompt="The capital of France is",
@@ -137,23 +144,63 @@ output = engine.generate(
     temperature=0.8,
     top_k=50,
     top_p=0.9,
+    seed=42,              # reproducible sampling
+    use_cache=True,       # KV cache on by default
+    eos=True,             # stop on <eos>
+    stop_sequences=("END",),
 )
+# output.text          -> the full decoded text
+# output.token_ids     -> prompt + generated ids
+# output.finished_reason -> "max_len" | "eos" | "stop_string"
 ```
 
+Streaming emits one decoded chunk per generated token via ``engine.stream(...)``
+(same arguments as ``generate``).
+
 ## CLI Usage
+
+One-shot completion:
 
 ```bash
 python -m inference.generate \
     --checkpoint checkpoints/best.pt \
+    --config configs/debug.yaml \
     --prompt "The capital of France is" \
-    --max-tokens 50 \
-    --temperature 0.8 \
-    --top-k 50
+    --max-tokens 50 --temperature 0.8 --top-k 50
+```
+
+Interactive chat (streaming):
+
+```bash
+python -m scripts.chat \
+    --checkpoint checkpoints/best.pt \
+    --config configs/debug.yaml
 ```
 
 ## Design Decisions
 
-1. **Separate from training** — Inference loads checkpoints without importing training pipeline
-2. **Composable strategies** — Temperature, top-k, and top-p can be combined
-3. **KV cache is optional** — Disabled for short prompts, enabled for long generation
-4. **Streaming is opt-in** — For API/integration use cases
+1. **Separate from training** — Inference loads checkpoints without importing
+   the training pipeline (AGENTS.md Rule 10); sampling/engine live under
+   ``inference/``, the interactive REPL under ``scripts/``.
+2. **Composable strategies** — Temperature, top-k, and top-p combine in
+   ``sample_next_token``; temperature 0.0 is greedy.
+3. **KV cache is default on and verified** — cached stepwise logits must equal
+   full recomputation (mask rows are sliced from the *end* of the causal
+   matrix because cached queries sit at the newest positions); a prefill's own
+   last-position logits sample the first generated token so the last prompt
+   token is never fed twice. ``--no-cache`` disables it for debugging.
+4. **Streaming is opt-in** — ``engine.stream`` yields chunks without buffering
+   the whole continuation.
+5. **First token from the prefill** — prefill logits already predict the token
+   after the prompt, so the engine samples it directly instead of re-running
+   the last prompt token (which would double-count it in the cache).
+
+## Verification
+
+- Greedy always returns the argmax; temperature 0 == greedy; top-k=1 forces
+  the top id; tight top-p keeps only the dominant token.
+- Stepwise cached decoding equals full recomputation to 1e-5 per logit.
+- Cached and non-cached generation produce identical tokens/text (same seed).
+- Long prompts are truncated to the newest ``context_length - max_new_tokens``
+  tokens so generation always has room.
+- 18 tests in ``tests/test_generation.py``; full suite: 82 passed.

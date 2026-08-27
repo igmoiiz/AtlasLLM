@@ -93,8 +93,12 @@ checkpoints/<...>/run_<timestamp>/
 ```
 
 Each `.pt` bundles `step`, `config`, `metrics`, and the state dicts of the
-model, optimizer, and scheduler. Saves write to a `.tmp` then rename, so a
-crash cannot truncate a checkpoint. An interrupted/converged resume is a
+model, optimizer, and scheduler. The stashed `config` is the full run config,
+so inference (`InferenceEngine.from_checkpoint`) can rebuild the model and
+tokenizer without being told the config explicitly (checkpoints trained
+before Stage 7 stored an empty config and need `--config`). Saves write to a
+`.tmp` then rename, so a crash cannot truncate a checkpoint. An
+interrupted/converged resume is a
 no-op with a clear message.
 
 **Checkpoint resumption:** `python -m training.train --config ... --resume <path>.pt`

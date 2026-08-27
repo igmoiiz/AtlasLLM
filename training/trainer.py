@@ -42,6 +42,7 @@ class Trainer:
         training = config.get("training", {})
         logging = config.get("logging", {})
         self.model = model
+        self.config = config
         self.device = device
         self.seed = int(seed)
         self.run_dir = Path(run_dir)
@@ -174,20 +175,20 @@ class Trainer:
                     save_checkpoint(
                         self.run_dir / "best.pt",
                         model=self.model, optimizer=self.optimizer, scheduler=self.scheduler,
-                        step=step, config={}, metrics={"val_loss": val_loss},
+                        step=step, config=self.config, metrics={"val_loss": val_loss},
                     )
 
             if self.save_every and step % self.save_every == 0:
                 save_checkpoint(
                     self.run_dir / "last.pt",
                     model=self.model, optimizer=self.optimizer, scheduler=self.scheduler,
-                    step=step, config={}, metrics={"train_loss": last_loss, "best_val_loss": best_val},
+                    step=step, config=self.config, metrics={"train_loss": last_loss, "best_val_loss": best_val},
                 )
 
         save_checkpoint(
             self.run_dir / "last.pt",
             model=self.model, optimizer=self.optimizer, scheduler=self.scheduler,
-            step=self.max_steps - 1, config={}, metrics={"train_loss": last_loss, "best_val_loss": best_val},
+            step=self.max_steps - 1, config=self.config, metrics={"train_loss": last_loss, "best_val_loss": best_val},
         )
         if self.writer is not None:
             self.writer.close()

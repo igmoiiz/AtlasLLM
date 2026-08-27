@@ -14,7 +14,9 @@ class LearnedPositionalEmbedding(nn.Module):
         super().__init__()
         self.pos_emb = nn.Embedding(context_length, d_model)
 
-    def forward(self, seq_len: int, device: torch.device) -> torch.Tensor:
-        # positions: [T], returns [T, D] broadcastable over the batch dim
-        positions = torch.arange(seq_len, device=device)
+    def forward(self, seq_len: int, device: torch.device, offset: int = 0) -> torch.Tensor:
+        # positions: [T] at absolute indices [offset, offset+seq_len)
+        # returns [T, D] broadcastable over the batch dim; offset lets the KV
+        # cache pick up embeddings exactly where a prefill left off.
+        positions = torch.arange(offset, offset + seq_len, device=device)
         return self.pos_emb(positions)

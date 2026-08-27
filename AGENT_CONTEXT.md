@@ -253,6 +253,32 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
+## Stage 7 — Inference Engine (DONE, commit pending)
+
+**Milestone reorder (user request):** build inference BEFORE Stage-6 real training so the model can be manually tested by asking questions after every training session. Commit + push after this stage (fail-safe pattern unchanged).
+
+59. ✅ `inference/sampling.py` — `greedy(logits)` (argmax); `sample_next_token(logits, temperature, top_k, top_p, rng)` batch-friendly; temp 0.0 == greedy, temp<0/top_k<1/top_p∉(0,1] raise; top-k via -inf mask, top-p nucleus (keep top id always) via scatter + renormalize
+60. ✅ `inference/kv_cache.py` — `KVCache(n_layers)` storage only: full `[B,H,T,hd]` K/V per layer, `append`, `update(pairs)`, `pairs()` (None for never-seen layers), `length()`, `reset()`
+61. ✅ `model/` KV-cache support (training path untouched, all old tests green):
+    - `attention._attend(x, past_key, past_value)` → `(out, k, v)`; public `forward(x)` and `forward_with_cache` wrappers
+    - **Mask bug caught by tests:** cached queries occupy rows `[P, P+t)` of the (P+t)² causal matrix → slice `triu(...)[p:p+t, :]`, NOT `[:t, :]`
+    - `pos_emb(seq_len, device, offset=0)` picks up absolute positions after a prefill; `AtlasLLM.forward(input_ids, past_key_values=None)` → logits-only (old behavior) or `(logits, new_pairs)` (full K/V per layer); validates pair count + context bound
+62. ✅ `inference/engine.py` — `InferenceEngine(model, tokenizer, device)`; `from_checkpoint(checkpoint_path, config=None, tokenizer=None, device)` (config = yaml path|dict|ModelConfig; tokenizer resolved from explicit arg → config `data.tokenizer_path` → ckpt config — needed because Stage 5 checkpoints store `config={}`); vocab-mismatch guard (tokenizer ≤ model); `generate()` → `Generation(text, token_ids, finished_reason ∈ max_len|eos|stop_string)`; `stream()` yields decoded chunks; `_prepare` truncates to newest `ctx - max_new_tokens` tokens; `_iter_tokens` bounded by context; seed → torch.Generator
+63. ✅ **First-token-from-prefill design (another bug caught by tests):** the prefill forward's own last-position logits already predict the first new token; feeding the last prompt token again double-counts it (logits diverged ~2.3 → cached top-1 (1154) ≠ recompute argmax (445)). Sampling `pending` from prefill logits makes cached == full recompute
+64. ✅ `inference/generate.py` CLI (`--checkpoint --config --prompt/--max-tokens/--temperature/--top-k/--top-p/--seed/--no-cache`); `scripts/chat.py` interactive streaming REPL (q/quit exits, empty line skipped); `inference/__init__.py` re-exports (generate NOT imported → runpy-safe)
+65. ✅ `training/trainer.py`: checkpoints now stash `self.config` (3 save sites) so Stage 6+ ckpts load without `--config`
+66. ✅ Tests: 82 total (18 new). Test-design lesson: ±20/−20 one-hot `lm_head` trick is unreliable (argmax = sign of Σh) → engine control-flow tests monkeypatch `inference.engine.sample_next_token` instead; sampling math tested separately
+67. ✅ Manual smoke (real debug checkpoint `run_20260827-172944/best.pt`, val 4.7989): `python -m inference.generate` prints continuation; cached vs `--no-cache` identical; chat REPL streams and exits. Output is gibberish — expected at ~110 steps; the point is to watch it improve across Stage-6 training sessions
+
+**Next Session: Stage 6 — Real Training (small.yaml) + manual chat Q/A after training**
+1. `python -m training.train --config configs/small.yaml` (13M params, context pads from Stage-4 estimates; expect hours on GTX 1070)
+2. After each training run: `python -m scripts.chat --checkpoint <run>/last.pt --config <run>/config.yaml` and ask the same questions to watch improvement
+3. Monitor overfit via val loss vs train loss; resume with `--resume` if interrupted
+4. Do NOT change architecture; only hyperparameters if clearly broken
+5. Stage 8 (evaluation) can start once small training produces meaningful checkpoints
+
+---
+
 ## User Preferences
 
 - Clean, well-documented project
@@ -265,10 +291,11 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 6 — Real Training
+## Next Session: Stage 6 — Real Training (+ manual chat testing)
 
 1. Run `python -m training.train --config configs/small.yaml` (13M params, 2.1M-token train set) — expect hours on GTX 1070; ~4k tok/s measured debug scale → small ~5x slower per step
-2. Monitor: val loss should follow train loss (overfit risk); track best.pt; use TensorBoard or metrics.jsonl
-3. Verify checkpoint resume works mid-run if interrupted; a validation run on test set comes in Stage 7/8
-4. Do NOT change architecture during this stage; only hyperparameters if clearly broken
-5. Stage 7 (Inference) can start with the small overfit checkpoints immediately in parallel if needed
+2. After each training run: `python -m scripts.chat --checkpoint <run>/last.pt --config <run>/config.yaml` and ask the SAME questions to watch the model improve between runs (Stage 7 already built for this)
+3. Monitor overfit: val loss should follow train loss; track best.pt; TensorBoard or metrics.jsonl
+4. Verify checkpoint resume mid-run if interrupted (`--resume <run>/last.pt`)
+5. Do NOT change architecture during this stage; only hyperparameters if clearly broken
+6. Stage 8 (evaluation) starts once small training produces meaningful checkpoints

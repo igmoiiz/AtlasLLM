@@ -36,6 +36,20 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: [B, T, D]
-        x = x + self.attn(self.ln1(x))
+        return self._forward_cached(x, None, None)[0]
+
+    def forward_with_cache(
+        self, x: torch.Tensor, past_key: torch.Tensor | None, past_value: torch.Tensor | None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Block pass with a cached prefix; returns (out, new_k, new_v)."""
+        return self._forward_cached(x, past_key, past_value)
+
+    def _forward_cached(
+        self, x: torch.Tensor, past_key: torch.Tensor | None, past_value: torch.Tensor | None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # x: [B, T, D]
+        h = self.ln1(x)
+        attn_out, k, v = self.attn.forward_with_cache(h, past_key, past_value)
+        x = x + attn_out
         x = x + self.ffn(self.ln2(x))
-        return x
+        return x, k, v

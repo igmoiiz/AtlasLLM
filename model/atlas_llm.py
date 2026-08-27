@@ -31,15 +31,44 @@ class AtlasLLM(nn.Module):
         self.ln_f = LayerNorm(config.d_model)
         self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
 
-    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        """Map token ids [B, T] to vocabulary logits [B, T, V]."""
+    def forward(
+        self, input_ids: torch.Tensor, past_key_values: list[tuple[torch.Tensor | None, torch.Tensor | None]] | None = None
+    ) -> torch.Tensor | tuple[torch.Tensor, list[tuple[torch.Tensor, torch.Tensor]]]:
+        """Map token ids [B, T] to vocabulary logits [B, T, V].
+
+        With ``past_key_values`` (one (K, V) pair per layer, entries may be
+        ``None`` to signal a fresh prefill) the model returns
+        ``(logits, new_pairs)`` where new_pairs holds the *full* K/V tensors
+        ``[B, H, P + T, head_dim]`` including the just-processed tokens,
+        ready to be passed back on the next call. Without it the model keeps
+        the pure ``logits`` behaviour used by training.
+        """
         b, t = input_ids.shape
         if t > self.config.context_length:
             raise ValueError(
                 f"Sequence length {t} exceeds context_length {self.config.context_length}"
             )
-        x = self.token_emb(input_ids) + self.pos_emb(t, input_ids.device)
-        for block in self.blocks:
-            x = block(x)
+        if past_key_values is None:
+            x = self.token_emb(input_ids) + self.pos_emb(t, input_ids.device)
+            for block in self.blocks:
+                x = block(x)
+            x = self.ln_f(x)
+            return self.lm_head(x)
+
+        if len(past_key_values) != len(self.blocks):
+            raise ValueError(
+                f"Expected {len(self.blocks)} past key/value pairs, got {len(past_key_values)}"
+            )
+        first_key = past_key_values[0][0]
+        offset = first_key.size(2) if first_key is not None else 0
+        if offset + t > self.config.context_length:
+            raise ValueError(
+                f"Prefilled {offset} + new {t} exceeds context_length {self.config.context_length}"
+            )
+        x = self.token_emb(input_ids) + self.pos_emb(t, input_ids.device, offset=offset)
+        new_pairs: list[tuple[torch.Tensor, torch.Tensor]] = []
+        for block, (past_key, past_value) in zip(self.blocks, past_key_values):
+            x, k, v = block.forward_with_cache(x, past_key, past_value)
+            new_pairs.append((k, v))
         x = self.ln_f(x)
-        return self.lm_head(x)
+        return self.lm_head(x), new_pairs

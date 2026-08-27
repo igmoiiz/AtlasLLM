@@ -1,0 +1,53 @@
+# AtlasLLM-Small — WikiText-103 pretraining configuration
+# Same model & schedule as small.yaml; data enlarged ~50x (2.1M -> ~100M tokens)
+# so the 13M-parameter model stops memorizing the training split.
+# Target: GTX 1070 8GB VRAM
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  d_ff: 1024
+  dropout: 0.1
+  bias: false
+
+tokenizer:
+  vocab_size: 16000
+  min_frequency: 2
+  # 1/10 systematic line sample (every 10th line of corpus.txt). The full
+  # 539 MB no-pretokenizer BPE pass exceeds ~32 GB RAM; a 53.7 MB sample
+  # yields an equivalent 16k vocabulary for this text domain.
+  corpus_path: "data/interim/wikitext-103-raw/corpus_sample.txt"
+
+training:
+  batch_size: 8
+  learning_rate: 3.0e-4
+  weight_decay: 0.1
+  max_steps: 100000
+  warmup_steps: 1000
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/wikitext103/train.bin"
+  val_path: "data/processed/wikitext103/val.bin"
+  test_path: "data/processed/wikitext103/test.bin"
+  tokenizer_path: "tokenizer/model/wikitext103"
+  train_text: "data/raw/wikitext-103-raw/train.txt"
+  val_text: "data/raw/wikitext-103-raw/valid.txt"
+  test_text: "data/raw/wikitext-103-raw/test.txt"
+
+checkpoint:
+  dir: "checkpoints/wikitext103"
+  save_every: 2000
+
+logging:
+  log_every: 100
+  val_every: 500
+  max_val_batches: 200
+  tensorboard: true
+
+device: "auto"
+dtype: "float32"

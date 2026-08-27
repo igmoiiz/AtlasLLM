@@ -41,6 +41,8 @@ checkpoint:
 logging:
   log_every: 200
   val_every: 1000
+  max_val_batches: 200
+  tensorboard: false
 
 device: "auto"
 dtype: "float32"

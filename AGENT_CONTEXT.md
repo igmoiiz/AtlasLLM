@@ -165,13 +165,13 @@ Stage 1 — Environment Setup        [x]
 Stage 2 — Tokenizer                [x]
 Stage 3 — Dataset Pipeline         [x]
 Stage 4 — Transformer Implementation [x]
-Stage 5 — Training Pipeline        [ ]
+Stage 5 — Training Pipeline        [x]
 Stage 6 — Real Training            [ ]
 Stage 7 — Inference                [ ]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Stages 1-4 complete. Transformer implemented from scratch in pure PyTorch (13M params, GPU-verified). Next: Stage 5 — Training Pipeline.
+**Current status:** Stages 1-5 complete. Rule 24 tiny-overfit passed (loss to 0.039). Next: Stage 6 — Real Training (patience expected, hours-long runs).
 
 ---
 
@@ -239,6 +239,18 @@ Stage 8 — Evaluation + Documentation [ ]
 48. ✅ GPU smoke (small config): params 12,982,784 (13M); loss drops 9.83→9.43 over 2 steps; AdamW step works; peak GPU 267.6 MB; logits [2,128,16000]
 49. ✅ Corrected stale "~5.5M" estimates in architecture.md + AGENT_CONTEXT → measured 13M (~5.5M assumed weight tying or smaller head)
 
+### Stage 5 — Training Pipeline (completed this session)
+
+50. ✅ `training/scheduler.py` — `lr_prefactor(step, warmup, max)` pure function (linear warmup → cosine to 0); `build_lr_scheduler` = LambdaLR wrapper; 6 property tests
+51. ✅ `training/checkpoint.py` — single-file `Checkpoint` dataclass; `save_checkpoint` atomic (.tmp + rename); `load_checkpoint` weights_only=True, restores model/optimizer/scheduler in place; raises FileNotFoundError on missing file
+52. ✅ `training/trainer.py` — `Trainer` owns the loop: AdamW (betas (0.9,0.95), eps 1e-8), warmup+cosine via config, grad clip, per-epoch reseeded shuffle (seed+epoch), evaluate() (no-grad, capped max_val_batches), best.pt on val improvement, last.pt periodic (+final), metrics.jsonl + console + optional TB; resume no-op guard
+53. ✅ `training/train.py` CLI — `--config/--resume/--steps`; device auto→cuda/cpu; dtype map; run dir `checkpoint.dir/run_<ts>/` with config.yaml copy + `reproducibility.json` (seed/model/training/data/tokenizer/torch/cuda/python/hardware/dataset_windows — rule 25)
+54. ✅ Configs: added `logging.max_val_batches` (debug 50, small/medium 200) + `logging.tensorboard` (small true, others false); NO `min_lr_ratio` field — scheduler decays cosine to 0, so the field would be dead config (rule 12)
+55. ✅ Gotchas: LambdaLR bakes an implicit step at construction (peak LR sits at step-1 index); AdamW state_dict contains `momentum: None` → test helper must handle None; resuming a finished grid → don't print 0.0→0.0, explicit no-op message
+56. ✅ Tests: 64 total (11 new: 6 scheduler + 3 checkpoint + 2 trainer incl. resume-continuation test)
+57. ✅ GPU debug run (real data, 1280 vocab): loss 7.29→5.04 (ln1280=7.16 floor), best val 4.84, warmup/cosine lr trace visible, tok/s ~4000, 20MB GPU; resume from step-99 ckpt → ran, best val improved
+58. ✅ Rule 24 tiny-overfit: 512-token stream memorized → loss 7.27→0.039 (300 steps, GPU); full path (dataset→tokenizer→model→loss→optimizer→backward) proven. PREREQUISITE MET; Stage 6 (real training) is authorized
+
 ---
 
 ## User Preferences
@@ -253,10 +265,10 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 5 — Training Pipeline
+## Next Session: Stage 6 — Real Training
 
-1. Implement `training/trainer.py` — training loop orchestration: data → model → loss → optimizer (AdamW) → scheduler (linear warmup + cosine decay) → gradient clipping → metrics (loss, val loss, lr, tokens/sec, GPU mem, grad norm) → checkpointing
-2. Implement `training/optimizer.py`/`training/scheduler.py` only if they add genuine value; otherwise construct inline in trainer (config-driven)
-3. Implement `training/checkpoint.py` — save/load state: model + optimizer + scheduler + step + config (Rule per CONTEXT §27); training resumable
-4. CLI `training/train.py --config configs/debug.yaml` → tiny overfit test (Rule 24 mandatory before real pretraining): model must overfit debug dataset
-5. Tests: `tests/test_checkpoint.py` + training-loop smoke; commit: "feat: implement training pipeline"
+1. Run `python -m training.train --config configs/small.yaml` (13M params, 2.1M-token train set) — expect hours on GTX 1070; ~4k tok/s measured debug scale → small ~5x slower per step
+2. Monitor: val loss should follow train loss (overfit risk); track best.pt; use TensorBoard or metrics.jsonl
+3. Verify checkpoint resume works mid-run if interrupted; a validation run on test set comes in Stage 7/8
+4. Do NOT change architecture during this stage; only hyperparameters if clearly broken
+5. Stage 7 (Inference) can start with the small overfit checkpoints immediately in parallel if needed

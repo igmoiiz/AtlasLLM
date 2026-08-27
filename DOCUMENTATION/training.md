@@ -74,25 +74,31 @@ where `progress` goes from 0 to 1 over the decay phase.
 
 ## Gradient Management
 
-- **Gradient clipping:** Global norm clipping (default max_norm=1.0)
-- **Gradient accumulation:** For effective larger batch sizes on limited VRAM
+- **Gradient clipping:** Global norm clipping (default `max_norm=1.0`)
 - **Gradient norm logging:** Tracked at every log step
+- **Gradient accumulation:** Not yet implemented; batch size is the primary
+  knob. Revisit if VRAM forces a smaller batch than is effective.
 
 ## Checkpointing
 
-Every N steps, save:
+Checkpoints are single files written by `training/checkpoint.py`:
 
 ```
-checkpoints/step_XXXXX/
-├── model.pt          # Model state dict
-├── optimizer.pt      # Optimizer state dict
-├── scheduler.pt      # Scheduler state dict
-├── config.yaml       # Training configuration
-├── metrics.json      # Current metrics
-└── step.txt          # Step number
+checkpoints/<...>/run_<timestamp>/
+├── last.pt    # Most recent state
+├── best.pt    # Lowest validation loss seen so far (when validation is on)
+├── metrics.jsonl       # Per-log-step metric records
+├── config.yaml         # Exact config used for the run
+└── reproducibility.json # Seed, versions, hardware, dataset sizes (rule 25)
 ```
 
-**Checkpoint resumption:** Training can be resumed from any checkpoint by loading all saved states.
+Each `.pt` bundles `step`, `config`, `metrics`, and the state dicts of the
+model, optimizer, and scheduler. Saves write to a `.tmp` then rename, so a
+crash cannot truncate a checkpoint. An interrupted/converged resume is a
+no-op with a clear message.
+
+**Checkpoint resumption:** `python -m training.train --config ... --resume <path>.pt`
+restores all state and continues from `step + 1` toward `max_steps`.
 
 ## Validation
 
@@ -116,9 +122,19 @@ Metrics logged at each step:
 | gpu_memory | GPU VRAM usage |
 
 Logging targets:
-- **TensorBoard** — for visualization
-- **Console** — periodic summary
-- **JSON file** — for post-hoc analysis
+- **Console** — one line per `logging.log_every` steps
+- **`metrics.jsonl`** — machine-readable, one JSON object per logged step
+- **TensorBoard** — optional, enabled with `logging.tensorboard: true`
+
+Validation loss is capped at `logging.max_val_batches` batches for speed.
+
+## Usage
+
+```bash
+python -m training.train --config configs/debug.yaml
+python -m training.train --config configs/debug.yaml --resume checkpoints/debug/run_20260101-000000/last.pt
+python -m training.train --config configs/small.yaml --steps 500   # override max_steps
+```
 
 ## Reproducibility
 
@@ -147,6 +163,7 @@ max_steps: 100
 ```
 
 The model must successfully:
+
 1. Forward pass
 2. Backward pass
 3. Optimizer step
@@ -154,3 +171,13 @@ The model must successfully:
 5. Checkpoint reload
 
 Before scaling to full training.
+
+## Stage 5 Verification
+
+Debug run on GPU (`configs/debug.yaml`, 100 steps, debug tokenizer/model):
+train loss `7.29 -> 5.04` (uniform floor for a 1280-vocab char LM is `ln 1280 ≈ 7.16`);
+warmup + cosine schedule visible; best val `4.84`; checkpoints + resume verified.
+
+Tiny-overfit test (AGENTS.md rule 24), 512-token stream memorized on GPU:
+loss `7.27 -> 0.039` over 300 steps — full dataset → tokenizer → model → loss
+→ optimizer → backward path proven before pretraining.

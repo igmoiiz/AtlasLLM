@@ -66,7 +66,9 @@ class Trainer:
         self.log_every = max(1, int(logging.get("log_every", 10)))
         self.val_every = int(logging.get("val_every", 0))
         self.max_val_batches = int(logging.get("max_val_batches", 200))
-        self.save_every = int(logging.get("save_every", 0))
+        # Configs define the periodic-snapshot cadence under `checkpoint:`;
+        # accept the old `logging:` key as a fallback only.
+        self.save_every = int(config.get("checkpoint", {}).get("save_every", logging.get("save_every", 0)))
         self.writer = None
         if logging.get("tensorboard", False):
             from torch.utils.tensorboard import SummaryWriter

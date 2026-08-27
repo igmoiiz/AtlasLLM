@@ -166,12 +166,12 @@ Stage 2 — Tokenizer                [x]
 Stage 3 — Dataset Pipeline         [x]
 Stage 4 — Transformer Implementation [x]
 Stage 5 — Training Pipeline        [x]
-Stage 6 — Real Training            [ ]
-Stage 7 — Inference                [ ]
+Stage 6 — Real Training            [~] (full 100k small.yaml run live)
+Stage 7 — Inference                [x]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Stages 1-5 complete. Rule 24 tiny-overfit passed (loss to 0.039). Next: Stage 6 — Real Training (patience expected, hours-long runs).
+**Current status:** Stages 1-7 complete (inference built before Stage 6 per user's milestone reorder). Rule 24 tiny-overfit passed (loss to 0.039). Stage 6 full training on small.yaml is running in the background (see Stage 6 section below); chat-test progress after checkpoints.
 
 ---
 
@@ -253,7 +253,7 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Stage 7 — Inference Engine (DONE, commit pending)
+## Stage 7 — Inference Engine (DONE: `67ad83e`, fix `88c99b7` — pushed)
 
 **Milestone reorder (user request):** build inference BEFORE Stage-6 real training so the model can be manually tested by asking questions after every training session. Commit + push after this stage (fail-safe pattern unchanged).
 
@@ -271,11 +271,21 @@ Stage 8 — Evaluation + Documentation [ ]
 67. ✅ Manual smoke (real debug checkpoint `run_20260827-172944/best.pt`, val 4.7989): `python -m inference.generate` prints continuation; cached vs `--no-cache` identical; chat REPL streams and exits. Output is gibberish — expected at ~110 steps; the point is to watch it improve across Stage-6 training sessions
 
 **Next Session: Stage 6 — Real Training (small.yaml) + manual chat Q/A after training**
-1. `python -m training.train --config configs/small.yaml` (13M params, context pads from Stage-4 estimates; expect hours on GTX 1070)
-2. After each training run: `python -m scripts.chat --checkpoint <run>/last.pt --config <run>/config.yaml` and ask the same questions to watch improvement
-3. Monitor overfit via val loss vs train loss; resume with `--resume` if interrupted
+1. `python -m training.train --config configs/small.yaml` (13M params; measured ~26k tok/s → 100k steps ≈ 2-2.5 h on GTX 1070, GPU 216 MB)
+2. After each training run: `python -m scripts.chat --checkpoint <run>/last.pt` and ask the same questions to watch improvement
+3. Monitor overfit via val loss vs train loss; resume with `--resume run_<ts>/last.pt` if interrupted (scheduler restores position correctly — verified live)
 4. Do NOT change architecture; only hyperparameters if clearly broken
 5. Stage 8 (evaluation) can start once small training produces meaningful checkpoints
+
+---
+
+## Stage 6 — Real Training (in progress)
+
+**Post-Stage-7 fix found here (shipped `88c99b7`):** top-p nucleus combined with top-k was broken. The old code marked `remove[..., 0] = False` on the *rank* axis but then built the scatter source with `torch.where(remove, -inf, scores)` — which indexes *vocab* positions by rank flags. Forced-keep hit vocab token 0, usually already -inf after top-k masking → empty surviving set → softmax NaN → CUDA `input[0] != 0` device assert / `multinomial` "probability tensor contains inf, nan or <0". Fix: do the entire nucleus computation in sorted order (sort scores → softmax → cumsum → keep_rank mask → censor sorted_scores → scatter back). Regression test added (`test_top_k_combined_with_top_p_is_safe_and_contained`); suite grew 82 → 83.
+
+**2000-step verification run** (`checkpoints/run_20260827-195547/`): loss 9.86 → 8.15, best val **8.3788**, GPU 216.6 MB, tok/s ~26k (≈13 steps/s; the old "~4k tok/s" was tiny-model scale). Checkpoints auto-load config (config-stash feature makes `--config` unnecessary post-Stage-7).
+
+**Full 100k run (live since 2026-08-27 ~21:02, PID 2100):** resumed from the 2000-step `last.pt` — scheduler restored at the right position (LR re-entered cosine at 3.00e-4 peak-adjacent), run dir `checkpoints/run_20260827-210202/`. Logs: `%TEMP%\opencode\small_full.out.log` / `.err.log`. Chat-test at checkpoints (every 2000 steps) and after the run; expected uniform floor ln16000 = 9.68 and only-slightly-below-fabric at 2k steps → coherence improves with tokens seen.
 
 ---
 
@@ -291,11 +301,11 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 6 — Real Training (+ manual chat testing)
+## Next Session: Stage 6 — training running; chat-test + evaluate
 
-1. Run `python -m training.train --config configs/small.yaml` (13M params, 2.1M-token train set) — expect hours on GTX 1070; ~4k tok/s measured debug scale → small ~5x slower per step
-2. After each training run: `python -m scripts.chat --checkpoint <run>/last.pt --config <run>/config.yaml` and ask the SAME questions to watch the model improve between runs (Stage 7 already built for this)
-3. Monitor overfit: val loss should follow train loss; track best.pt; TensorBoard or metrics.jsonl
-4. Verify checkpoint resume mid-run if interrupted (`--resume <run>/last.pt`)
+1. Poll `%TEMP%\opencode\small_full.out.log` / `.err.log` and `metrics.jsonl`; run dir `checkpoints/run_20260827-210202/`
+2. After the 100k run (or at `last.pt` checkpoints): `python -m scripts.chat --checkpoint checkpoints/run_20260827-210202/last.pt` and ask the SAME questions; compare between checkpoints (Stage 7 built for this)
+3. Watch train vs val loss for overfit; `--resume <run>/last.pt` resumes cleanly if interrupted
+4. Confirm the run's Train/Eval summary line (expected hundreds of candidate checkpoints saved; best.pt tracks lowest val)
 5. Do NOT change architecture during this stage; only hyperparameters if clearly broken
 6. Stage 8 (evaluation) starts once small training produces meaningful checkpoints

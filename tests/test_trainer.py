@@ -69,3 +69,19 @@ def test_trainer_resume_continues_from_checkpoint(tmp_path):
     assert resumed["train_loss_first"] == first["train_loss_last"]
     assert resumed["best_val_loss"] is not None
     assert (tmp_path / "run2" / "last.pt").is_file()
+
+
+def test_save_every_reads_checkpoint_section(tmp_path):
+    # Regression: configs define the periodic snapshot cadence under
+    # `checkpoint.save_every`, but Train used to read `logging.save_every`
+    # (silently 0), so periodic last.pt snapshots never fired. Only the
+    # run-end save was writing last.pt — the run-end assert in the earlier
+    # tests masked the wiring bug.
+    def make_trainer(cfg):
+        model = AtlasLLM(ModelConfig(vocab_size=256, context_length=16, d_model=64, n_layers=2, n_heads=4, d_ff=128, dropout=0.1, bias=False))
+        return Trainer(model, cfg, None, None, device=torch.device("cpu"), seed=1, run_dir=tmp_path)
+
+    base = {"training": {"learning_rate": 1e-2, "max_steps": 5, "warmup_steps": 1, "grad_clip": 1.0}, "logging": {}}
+    assert make_trainer(base).save_every == 0
+    cfg = {**base, "checkpoint": {"dir": str(tmp_path / "ckpts"), "save_every": 7}}
+    assert make_trainer(cfg).save_every == 7

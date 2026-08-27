@@ -77,7 +77,7 @@ def main():
         return
 
     with open(args.config) as f:
-        config = yaml.safe_load(f)
+        _config = yaml.safe_load(f)
 
     print("Evaluation module — to be completed with full model implementation")
     print(f"Checkpoint: {args.checkpoint}")

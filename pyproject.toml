@@ -7,7 +7,8 @@ name = "atlas-llm"
 version = "0.1.0"
 description = "A small dense decoder-only Transformer language model built from scratch for learning."
 readme = "README.md"
-license = {text = "MIT"}
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE.md"]
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.0",
@@ -39,6 +40,10 @@ quality = [
 all = [
     "atlas-llm[tokenization,data,tracking,visualization,testing,quality]",
 ]
+
+[tool.setuptools.packages.find]
+include = ["model*", "tokenizer*", "data_pipeline*", "training*", "inference*", "evaluation*", "safety*", "harness*", "monitoring*", "scripts*"]
+exclude = ["tests*", "configs*", "data*", "DOCUMENTATION*", "checkpoints*"]
 
 [tool.ruff]
 line-length = 100

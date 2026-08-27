@@ -30,15 +30,13 @@ This file is the agent's persistent memory across sessions. Update it after ever
 ## Development Environment
 
 - **OS:** Windows 10/11
-- **Python:** 3.14.3 (64-bit)
+- **Python:** 3.14.3 (64-bit, system install — used directly, no venv)
 - **PyTorch:** 2.12.0+cu126
-- **CUDA:** 12.6
+- **CUDA:** 12.6 (driver 582.66, CUDA 13.0 runtime visible)
 - **GPU:** NVIDIA GTX 1070 — 8.6 GB VRAM
 - **CPU:** Intel Xeon E3-1270 v3 (4C/8T, 3.5 GHz)
 - **RAM:** 32 GB DDR3 1600 MHz
 - **Storage:** 512 GB SSD + 1 TB HDD
-
----
 
 ## Installed Packages
 
@@ -46,15 +44,16 @@ This file is the agent's persistent memory across sessions. Update it after ever
 |---------|--------|
 | torch | 2.12.0+cu126 |
 | PyYAML | 6.0.3 |
-| numpy | MISSING |
-| tokenizers | MISSING |
-| datasets | MISSING |
-| tensorboard | MISSING |
-| matplotlib | MISSING |
-| pytest | MISSING |
-| ruff | MISSING |
+| numpy | 2.5.2 |
+| pandas | 3.0.5 |
+| tokenizers | 0.23.1 |
+| datasets | 5.0.1 |
+| tensorboard | 2.21.0 |
+| matplotlib | 3.11.1 |
+| pytest | 9.1.1 (+pytest-cov) |
+| ruff | 0.16.4 |
 
-**Action required:** Install all missing packages via `pip install -e ".[all]"`
+**Status:** All installed into system Python 3.14.3 via `pip install -e ".[all]"` (installed editable `atlas-llm 0.1.0`). The `.venv` was deleted on user instruction. Note: a pre-existing global `numba` (not a project dependency) conflicts with numpy 2.5.2 — ignored, does not affect AtlasLLM.
 
 ---
 
@@ -162,7 +161,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 ## Implementation Stages (approved)
 
 ```
-Stage 1 — Environment Setup        [ ]
+Stage 1 — Environment Setup        [x]
 Stage 2 — Tokenizer                [ ]
 Stage 3 — Dataset Pipeline         [ ]
 Stage 4 — Transformer Implementation [ ]
@@ -172,7 +171,7 @@ Stage 7 — Inference                [ ]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Scaffolding complete. Stage 1 not yet started.
+**Current status:** Stage 1 (Environment Setup) complete. All dependencies installed, CUDA verified, ruff clean. Next: Stage 2 — Tokenizer.
 
 ---
 
@@ -191,6 +190,17 @@ Stage 8 — Evaluation + Documentation [ ]
 11. ✅ Created DOCUMENTATION/ folder with 10 documentation files
 12. ✅ Updated README.md to reflect all changes
 
+### Stage 1 — Environment Setup (completed this session)
+
+13. ✅ Fixed `pyproject.toml` — added `[tool.setuptools.packages.find]` (unblocked editable install) and corrected `license` to match proprietary LICENSE.md
+14. ✅ Deleted `.venv` (127 MB freed) per user instruction — system Python 3.14.3 is canonical
+15. ✅ Installed all deps via `pip install -e ".[all]"` (~390 MB on disk; C: free 77.4 GB)
+16. ✅ Verified: torch 2.12.0+cu126 CUDA enabled, GPU matmul OK (GTX 1070)
+17. ✅ Verified: tokenizers, datasets, tensorboard, matplotlib, pytest, ruff all import
+18. ✅ `ruff check .` — clean (fixed 2 pre-existing issues in placeholder scripts)
+19. ✅ `pytest` — runs (0 tests collected; test files are still empty stubs)
+20. ✅ Added `.obsidian/` to .gitignore (editor config)
+
 ---
 
 ## User Preferences
@@ -205,11 +215,10 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Start Stage 1 — Environment Setup
+## Next Session: Stage 2 — Tokenizer
 
-1. Install all missing packages: `pip install -e ".[all]"`
-2. Verify PyTorch + CUDA works
-3. Set up ruff for linting
-4. Set up pytest for testing
-5. Run a quick smoke test
-6. Commit: "feat: complete environment setup"
+1. Implement tokenizer interface (`tokenizer/tokenizer.py`) with `encode`/`decode`/`save`/`load`
+2. Decide: train on WikiText-2-raw-v1 with HF `tokenizers` BPE, vocab 16,000 + special tokens
+3. Implement `training/train_tokenizer.py` (CLI) and download the dataset
+4. Vocabulary statistics + `encode ↔ decode` round-trip tests (`tests/test_tokenizer.py`)
+5. Commit: "feat: implement tokenizer training pipeline"

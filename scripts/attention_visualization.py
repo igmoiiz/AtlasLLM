@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 
 import torch
-import yaml
 
 
 def load_attention_weights(checkpoint_path: Path, layer_idx: int = 0):

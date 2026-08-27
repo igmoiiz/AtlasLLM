@@ -29,17 +29,31 @@ def tokenize_to_bin(
     tokenizer: AtlasTokenizer,
     text_path: Path,
     bin_path: Path,
+    chunk_chars: int = 100_000,
 ) -> dict:
-    """Encode ``text_path`` with ``tokenizer`` and write it as uint16 tokens."""
-    text = text_path.read_text(encoding="utf-8")
-    ids = tokenizer.encode(text)
-    if ids and max(ids) > 65535:
-        raise ValueError(
-            f"{text_path} produced token id {max(ids)}, too large for uint16 storage"
-        )
+    """Encode ``text_path`` with ``tokenizer`` and write it as uint16 tokens.
+
+    The file is encoded in fixed-size character chunks and streamed to disk.
+    A single whole-file ``encode()`` on a large corpus (e.g. WikiText-103
+    train, ~538 MB of text) materialises the full ``list[int]`` at once —
+    several gigabytes of contiguous allocation. Chunking keeps peak memory
+    flat regardless of corpus size.
+    """
+    total = 0
     bin_path.parent.mkdir(parents=True, exist_ok=True)
-    np.asarray(ids, dtype=np.uint16).tofile(bin_path)
-    return {"tokens": len(ids)}
+    with open(text_path, encoding="utf-8") as src, open(bin_path, "wb") as dst:
+        while True:
+            text = src.read(chunk_chars)
+            if not text:
+                break
+            ids = tokenizer.encode(text)
+            if ids and max(ids) > 65535:
+                raise ValueError(
+                    f"{text_path} produced token id {max(ids)}, too large for uint16 storage"
+                )
+            np.asarray(ids, dtype=np.uint16).tofile(dst)
+            total += len(ids)
+    return {"tokens": total}
 
 
 def build_processed_data(config: dict, tokenizer: AtlasTokenizer, meta_path: Path | None = None) -> dict:

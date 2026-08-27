@@ -57,6 +57,12 @@ Every dataset added must be documented in `data/README.md`:
 
 ## Cleaning Pipeline
 
+For WikiText-2 (already high-quality raw Wikipedia text) the cleaning step is
+**not applied**: documents are tokenized as-is, preserving punctuation, spacing,
+and paragraph breaks (the tokenizer is lossless). The cleaning pipeline below is
+reserved for lower-quality corpora (Phase 2, OpenWebText) and must never silently
+modify the immutable `data/raw/` sources.
+
 ### Step 1 — Unicode Normalization
 
 Normalize all text to NFC (Canonical Decomposition followed by Canonical Composition).
@@ -111,6 +117,25 @@ Target  1:  [t_{T+1}, t_{T+2}, ..., t_{2T}]
 
 Each sequence is the next-token prediction task.
 
+## Building the Dataset
+
+```bash
+python -m data_pipeline.preprocessing --config configs/small.yaml
+python -m data_pipeline.preprocessing --config configs/debug.yaml
+```
+
+Each run tokenizes the three split text files (from the config `data.train_text /
+val_text / test_text`) and writes raw `uint16` arrays to `data.train_path /
+val_path / test_path` plus `meta.json`. Because bins are tokenizer- and
+context-specific, `configs/debug.yaml` writes into `data/processed/debug/` so the
+debug and small datasets do not clobber each other.
+
+Verify a built dataset:
+
+```bash
+python -m scripts.inspect_dataset --data data/processed/train.bin
+```
+
 ## Binary Format
 
 Tokenized data is stored as raw `uint16` binary files:
@@ -130,19 +155,27 @@ Using `uint16` supports vocabulary sizes up to 65,536.
 
 ## DataLoader
 
-```python
-class TextDataset:
-    def __init__(self, data_path, context_length):
-        self.data = np.fromfile(data_path, dtype=np.uint16)
-        self.context_length = context_length
+`data_pipeline.dataset.TextDataset` memory-maps a `uint16` .bin file and returns
+contiguous, non-overlapping, next-token-shifted windows:
 
-    def __getitem__(self, idx):
-        start = idx * self.context_length
-        chunk = self.data[start : start + self.context_length + 1]
-        x = torch.tensor(chunk[:-1], dtype=torch.long)   # input
-        y = torch.tensor(chunk[1:], dtype=torch.long)     # target
-        return {"input_ids": x, "targets": y}
+```python
+from torch.utils.data import DataLoader
+from data_pipeline.dataset import TextDataset
+
+ds = TextDataset("data/processed/train.bin", context_length=256)
+loader = DataLoader(ds, batch_size=8, shuffle=True)
+
+batch = next(iter(loader))
+batch["input_ids"]  # [B, T] torch.long
+batch["targets"]    # [B, T] torch.long, input shifted by one token
 ```
+
+- `__len__` = number of complete windows: `(n_tokens - 1) // context_length`
+- Each window consumes `context_length + 1` tokens (input `t0..t_{T-1}`, target
+  `t1..t_T`); the stream tail is dropped each epoch
+- Padding is unnecessary (fixed-length windows); cross-document boundaries are
+  treated as ordinary token context, matching the chained corpus used to train
+  the tokenizer
 
 ## Dataset Requirements
 

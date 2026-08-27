@@ -26,9 +26,13 @@ training:
   seed: 42
 
 data:
-  train_path: "data/processed/train.bin"
-  val_path: "data/processed/val.bin"
+  train_path: "data/processed/debug/train.bin"
+  val_path: "data/processed/debug/val.bin"
+  test_path: "data/processed/debug/test.bin"
   tokenizer_path: "tokenizer/model/debug"
+  train_text: "data/raw/wikitext-2-raw/train.txt"
+  val_text: "data/raw/wikitext-2-raw/valid.txt"
+  test_text: "data/raw/wikitext-2-raw/test.txt"
 
 checkpoint:
   dir: "checkpoints/debug"

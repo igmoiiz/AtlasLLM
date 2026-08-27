@@ -163,7 +163,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 ```
 Stage 1 — Environment Setup        [x]
 Stage 2 — Tokenizer                [x]
-Stage 3 — Dataset Pipeline         [ ]
+Stage 3 — Dataset Pipeline         [x]
 Stage 4 — Transformer Implementation [ ]
 Stage 5 — Training Pipeline        [ ]
 Stage 6 — Real Training            [ ]
@@ -171,7 +171,7 @@ Stage 7 — Inference                [ ]
 Stage 8 — Evaluation + Documentation [ ]
 ```
 
-**Current status:** Stages 1-2 complete. Tokenizer trained (16k vocab, WikiText-2). Next: Stage 3 — Dataset Pipeline.
+**Current status:** Stages 1-3 complete. WikiText-2 tokenized to uint16 .bin datasets (16k small + 1280 debug). Next: Stage 4 — Transformer Implementation.
 
 ---
 
@@ -214,6 +214,18 @@ Stage 8 — Evaluation + Documentation [ ]
 29. ✅ `ruff check` clean; data provenance documented in `data/README.md`; `DOCUMENTATION/tokenizer.md` updated
 30. ✅ Trained models saved to `tokenizer/model/small` and `tokenizer/model/debug` (git-ignored, reproducible via CLI)
 
+### Stage 3 — Dataset Pipeline (completed this session)
+
+31. ✅ Implemented `data_pipeline/dataset.py` — `TextDataset(torch.utils.data.Dataset)` memory-maps uint16 .bin; non-overlapping contiguous shifted windows (input `t0..t_{T-1}`, target `t1..t_T`); `len = (n-1)//T`
+32. ✅ Implemented `data_pipeline/preprocessing.py` — `tokenize_to_bin` (whole-file encode → uint16, overflow guard) + `build_processed_data` (writes train/val/test .bin + `meta.json` with vocab/context/per-split counts/tokenizer path/created) + CLI (reuses `TextDataset.__len__` for sequence counts — no duplicated math)
+33. ✅ Implemented `scripts/inspect_dataset.py` — verify .bin + meta.json (was an empty stub)
+34. ✅ Configs: `data:` — added `test_path` + raw text sources (`train/val/test_text`); debug splits moved to `data/processed/debug/` (**different tokenizer/context ⇒ separate bins**, prevents clobbering small)
+35. ✅ Built datasets: small (16k vocab, ctx 256) train 2.12M/val 219k/test 259k tokens; debug (1280, ctx 32) train 6.91M/val 724k/test 818k
+36. ✅ Verified end-to-end: DataLoader batch shapes `[8, 256]` long, next-token shift OK, ids < vocab
+37. ✅ Tests: 29 passing (11 new in `tests/test_dataset.py` — window math, shift contract, arbitrary index, T=1, empty/too-short, missing file, bin==encode, meta.json, roundtrip through dataset)
+38. ✅ Gotcha: `python -m pkg.sub` fails (runpy RuntimeWarning) if `__init__.py` imports the target submodule — `data_pipeline/__init__.py` re-exports only `TextDataset` (mirrors tokenizer package)
+39. ✅ `ruff check` clean; `data/README.md` + `DOCUMENTATION/dataset.md` synced (cleaning pipeline documented as deferred for Phase-2 corpora)
+
 ---
 
 ## User Preferences
@@ -228,10 +240,10 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ---
 
-## Next Session: Stage 3 — Dataset Pipeline
+## Next Session: Stage 4 — Transformer Implementation
 
-1. Implement `data_pipeline` dataset abstraction (per AGENTS.md, one authoritative `Dataset` interface) that maps text → `[B, T]` tensors using the trained tokenizer for the LM task (shifted next-token prediction, batched)
-2. Implement streaming batched loader with reproducible shuffling + seed; `train`/`valid`/`test` splits from `data/interim/wikitext-2-raw/`
-3. Verify: dataset shapes, batched iteration, token coverage, no padding leakage into attention (document how padding is masked if variable-length batches are used)
-4. Add dataset smoke tests (shape `[B, T]`, token id range, deterministic seed, epoch iteration) in `tests/test_dataset.py`
-5. Commit: "feat: implement dataset pipeline"
+1. Implement `model/` from scratch in pure PyTorch (pre-normalization per CONTEXT §19-20): `embeddings.py`, `attention.py` (causal, explicit mask, multi-head), `feed_forward.py` (GELU), `normalization.py` (LayerNorm), `transformer_block.py`, `atlas_llm.py` (full model + LM head). Learned positional embeddings (Decision 8)
+2. Shape contract: `[B,T] → [B,T,D] → logits [B,T,V]`; explicit causal mask
+3. Implement `training/loss.py` (cross-entropy, only after taking `loss.py` into account — CONTEXT §22)
+4. Mandatory tests (AGENTS.md Rule 23): shapes, causal masking (future tokens do not affect earlier predictions — must test explicitly), attention dimensions, gradient flow, block forward, full-model forward, loss
+5. Commit: "feat: implement Transformer architecture"

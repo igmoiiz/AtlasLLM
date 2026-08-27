@@ -37,6 +37,17 @@ data/
 
 **Interim:** `data/interim/wikitext-2-raw/corpus.txt` = train + validation text (used to train the tokenizer). Reproducible by concatenating the two raw files; the test split is excluded from tokenizer training.
 
+## Processed Datasets
+
+Tokenized by `python -m data_pipeline.preprocessing --config configs/<name>.yaml` → raw uint16 `.bin` files + `meta.json` (vocab, context, per-split token/sequence counts, tokenizer path, created). Bins are tokenizer- and context-specific:
+
+| Config   | Tokenizer (vocab) | Context | Split       | Tokens      | Sequences |
+|----------|-------------------|---------|-------------|-------------|-----------|
+| small    | small (16,000)    | 256     | train/val/test | 2,116,813 / 219,289 / 258,561 | 8,268 / 856 / 1,010 |
+| debug    | debug (1,280)     | 32      | train/val/test | 6,910,924 / 723,663 / 817,836 | 215,966 / 22,614 / 25,557 |
+
+Outputs are git-ignored (`data/processed/`); `meta.json` records everything needed to reproduce them.
+
 ## Adding a Dataset
 
 1. Place raw files in `data/raw/`

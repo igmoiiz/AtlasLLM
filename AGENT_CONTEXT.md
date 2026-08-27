@@ -287,6 +287,11 @@ Stage 8 — Evaluation + Documentation [ ]
 
 **Full 100k run (live since 2026-08-27 ~21:02, PID 2100):** resumed from the 2000-step `last.pt` — scheduler restored at the right position (LR re-entered cosine at 3.00e-4 peak-adjacent), run dir `checkpoints/run_20260827-210202/`. Logs: `%TEMP%\opencode\small_full.out.log` / `.err.log`. Chat-test at checkpoints (every 2000 steps) and after the run; expected uniform floor ln16000 = 9.68 and only-slightly-below-fabric at 2k steps → coherence improves with tokens seen.
 
+**Power cutoff mid-run (~step 24700) + recovery:**
+- Process died with the cut; GPU verified idle. `best.pt` (the ONLY recoverable snapshot) = step 13000, val 6.8413 — the run's true best; ~14 min of steps (13001–24700) re-done.
+- **Root-cause bug:** periodic `last.pt` NEVER fired in any config — the trainer read `logging.save_every` (trainer.py) while all configs define `checkpoint.save_every`. Existing tests masked it (they only assert last.pt exists at run end, and the run-end save always writes it). Fixed: trainer now reads `checkpoint.save_every` (keeps `logging` fallback) + regression test (`test_save_every_reads_checkpoint_section`) → 84 tests. Commit `7fe6c50`, pushed.
+- **Resumed run:** `python -m training.train --config configs/small.yaml --resume checkpoints/run_20260827-210202/best.pt` → new dir `checkpoints/run_20260827-225205/` (PID 804), clean metrics.jsonl, LR restored correctly (2.89e-4 → cosine continuity, verified), train/val back on the pre-cutoff trajectory (val 6.843 @ step 14000 ≈ pre-cutoff 6.841@13000). Periodic last.pt verified live (fired at absolute step 14000). Logs: `%TEMP%\opencode\small_recovered.{out,err}.log`. Future cut cost ≤ 2000 steps (~2.5 min).
+
 ---
 
 ## User Preferences
@@ -303,9 +308,9 @@ Stage 8 — Evaluation + Documentation [ ]
 
 ## Next Session: Stage 6 — training running; chat-test + evaluate
 
-1. Poll `%TEMP%\opencode\small_full.out.log` / `.err.log` and `metrics.jsonl`; run dir `checkpoints/run_20260827-210202/`
-2. After the 100k run (or at `last.pt` checkpoints): `python -m scripts.chat --checkpoint checkpoints/run_20260827-210202/last.pt` and ask the SAME questions; compare between checkpoints (Stage 7 built for this)
-3. Watch train vs val loss for overfit; `--resume <run>/last.pt` resumes cleanly if interrupted
-4. Confirm the run's Train/Eval summary line (expected hundreds of candidate checkpoints saved; best.pt tracks lowest val)
+1. Poll `%TEMP%\opencode\small_recovered.{out,err}.log` and `checkpoints/run_20260827-225205/metrics.jsonl`
+2. After the 100k run (or at `last.pt` checkpoints): `python -m scripts.chat --checkpoint checkpoints/run_20260827-225205/last.pt` and ask the SAME questions; compare between checkpoints (Stage 7 built for this)
+3. Watch train vs val loss for overfit; `--resume <run>/last.pt` resumes cleanly (verified twice live) and periodic last.pt now protects ≤2000-step loss on power cut
+4. Best-so-far history: 6.8413 (step 13000, killed run) → resumed run's own best tracks in `run_20260827-225205/best.pt`
 5. Do NOT change architecture during this stage; only hyperparameters if clearly broken
 6. Stage 8 (evaluation) starts once small training produces meaningful checkpoints

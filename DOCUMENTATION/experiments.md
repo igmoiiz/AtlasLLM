@@ -2,11 +2,11 @@
 
 AtlasLLM experiment system - configuration-driven, reproducible comparisons.
 
-> **Status: PLANNED.** The comparison workflow below is the design. Today the
-> repository has three working configurations - `configs/debug.yaml`,
-> `configs/small.yaml`, `configs/medium.yaml` - and no `configs/experiments/`
-> or `scripts/evaluation.py` results yet. Any table of measured results in the
-> old version of this page was hypothetical and has been removed.
+> **Status: INITIAL RESULTS.** The comparison workflow below is the design; the
+> experiment-grid configs (`configs/experiments/`) are not built yet. What IS
+> measured today: one real overfit study (WikiText-2 vs WikiText-103, same model)
+> with real numbers below - a concrete "what not to do" versus "healthy" pair.
+> `scripts/evaluation.py` now emits these metrics for any checkpoint.
 
 ## For a beginner
 
@@ -141,12 +141,24 @@ The `config.yaml` and `reproducibility.json` make each run self-describing (seed
 
 ## Comparing Results
 
-Comparison is planned to use a table like this (placeholders only - populate from real `metrics.jsonl` files):
+The overfit study is the first controlled (same-model, different-corpus) comparison:
 
-| Experiment | Params | Best Val Loss | Perplexity | Tokens/sec | VRAM |
-|-----------|--------|---------------|------------|------------|------|
-| small | 12,982,784 | (from run) | (from run) | ~26,000 | ~217 MB |
-| depth_8 | (measure) | (from run) | (from run) | (measure) | (measure) |
+| Run | Data | Train Tokens | Final Train Loss | Best Val Loss | Memo. Gap (val-train) | Val Perplexity |
+|-----|------|-------------|------------------|---------------|----------------------|----------------|
+| `run_20260827-231105/last.pt` | WikiText-2 | 2.1M | 3.68 | 7.49 @ 100k | +3.8 nats | exp(7.49) ≈ 1787 |
+| `run_20260905-215250/last.pt` | WikiText-103 | 108M | 5.18 | 5.16 @ 100k | -0.02 nats | exp(5.16) ≈ 174 |
+
+The gap metric is measured by `scripts/evaluation.py`: held-out loss minus train
+loss on matching passages. WikiText-2 ran ~97 epochs and memorized (gap +3.8);
+WikiText-103 ran ~1.9 epochs and generalizes (gap ~0, test ppl 165). Same model
+and schedule in both runs - the corpus size is the only change. See
+[training.md](training.md) and the run metrics for the full curves.
+
+Measured with:
+
+```bash
+python -m scripts.evaluation --checkpoint checkpoints/wikitext103/run_20260905-215250/last.pt --config configs/wikitext103.yaml
+```
 
 Perplexity = `exp(val_loss)`. This table must only ever contain measured values from real runs (see [AGENTS.md](../AGENTS.md) rule 48).
 
@@ -165,7 +177,7 @@ Rules:
 - [ ] Create `configs/experiments/` variants (depth, width, context, heads)
 - [ ] Add positional-encoding config switch (sinusoidal/RoPE)
 - [ ] Add activation config switch (SwiGLU)
-- [ ] Implement `scripts/evaluation.py` to emit a real comparison table
+- [x] Implement `scripts/evaluation.py` (perplexity + memorization + generation) - done, see Comparing Results
 
 ## Related documentation
 

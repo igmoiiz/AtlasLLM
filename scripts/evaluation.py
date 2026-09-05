@@ -1,99 +1,105 @@
-"""Evaluation — measure perplexity and run generation benchmarks."""
+"""Evaluation CLI: measure a trained checkpoint with Stage-8 metrics.
+
+    python -m scripts.evaluation --checkpoint checkpoints/wikitext103/run_<ts>/last.pt --config configs/wikitext103.yaml
+
+Reports:
+  - validation loss + perplexity        (evaluation.perplexity)
+  - train-vs-heldout memorization gap   (evaluation.memorization)
+  - generation probes on fixed prompts  (evaluation.generation_eval)
+
+The run dir's ``config.yaml`` (written by the trainer) is used when ``--config``
+is omitted.
+"""
 
 import argparse
 import json
-import math
+import sys
 from pathlib import Path
 
 import torch
 import yaml
 
+from data_pipeline.dataset import TextDataset
+from evaluation.generation_eval import probe_generation
+from evaluation.memorization import evaluate_memorization
+from evaluation.perplexity import evaluate_loss, perplexity
+from inference.engine import InferenceEngine
 
-def compute_perplexity(loss: float) -> float:
-    """Perplexity = exp(cross_entropy_loss)."""
-    return math.exp(loss)
-
-
-def load_checkpoint(checkpoint_path: Path):
-    """Load a model checkpoint."""
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    return checkpoint
-
-
-def evaluate_perplexity(model, data_loader, device):
-    """Compute perplexity over a dataset split."""
-    model.eval()
-    total_loss = 0.0
-    total_tokens = 0
-
-    with torch.no_grad():
-        for batch in data_loader:
-            input_ids = batch["input_ids"].to(device)
-            targets = batch["targets"].to(device)
-
-            logits = model(input_ids)
-            loss = torch.nn.functional.cross_entropy(
-                logits.view(-1, logits.size(-1)),
-                targets.view(-1),
-                reduction="sum",
-            )
-            total_loss += loss.item()
-            total_tokens += targets.numel()
-
-    avg_loss = total_loss / max(total_tokens, 1)
-    perplexity = compute_perplexity(avg_loss)
-    return avg_loss, perplexity
+DEFAULT_PROMPTS = [
+    "The capital of France is",
+    "Once upon a time,",
+    "Artificial intelligence is",
+    "In 1969, humans first",
+    "The Earth orbits the Sun because",
+]
 
 
-def run_generation_benchmark(model, tokenizer, prompts: list, max_new_tokens: int = 50):
-    """Run generation on fixed prompts and return results."""
-    results = []
-    model.eval()
-
-    for prompt in prompts:
-        input_ids = tokenizer.encode(prompt)
-        input_tensor = torch.tensor([input_ids], dtype=torch.long)
-
-        with torch.no_grad():
-            output = model.generate(input_tensor, max_new_tokens=max_new_tokens)
-
-        generated = tokenizer.decode(output[0].tolist())
-        results.append({"prompt": prompt, "generated": generated})
-
-    return results
+def _load_config(config_arg: str | None, checkpoint: Path) -> dict:
+    if config_arg:
+        return yaml.safe_load(Path(config_arg).read_text(encoding="utf-8"))
+    # Trainer-run dirs carry their own config.yaml; the checkpoint itself holds
+    # a stashed "config" dict used for things like model sizing when that is
+    # missing (pre-Stage-7 checkpoints).
+    run_config = Path(checkpoint).parent / "config.yaml"
+    if run_config.is_file():
+        return yaml.safe_load(run_config.read_text(encoding="utf-8"))
+    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    return ckpt.get("config")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Evaluate AtlasLLM")
-    parser.add_argument("--checkpoint", type=Path, required=True, help="Model checkpoint path")
-    parser.add_argument("--config", type=Path, required=True, help="Model config YAML")
-    parser.add_argument("--data", type=Path, help="Evaluation data path")
-    parser.add_argument("--output", type=Path, default=Path("eval_results.json"), help="Results output path")
-    parser.add_argument("--max-tokens", type=int, default=50, help="Max generation length")
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--checkpoint", required=True, type=Path, help="Path to a training checkpoint (.pt)")
+    parser.add_argument("--config", default=None, help="Path to a configs/*.yaml file (default: run-dir config.yaml)")
+    parser.add_argument("--max-batches", type=int, default=200, help="Cap on evaluated batches per loader (0 = all)")
+    parser.add_argument("--max-tokens", type=int, default=120, help="Generated tokens per prompt probe")
+    parser.add_argument("--prompts", nargs="*", default=DEFAULT_PROMPTS, help="Prompts to probe (default: standard suite)")
+    parser.add_argument("--out", type=Path, default=None, help="Write results to this JSON file")
     args = parser.parse_args()
 
-    if not args.checkpoint.exists():
-        print(f"Error: checkpoint not found: {args.checkpoint}")
-        return
+    config = _load_config(args.config, args.checkpoint)
+    model_cfg = config["model"]
+    ctx = int(model_cfg["context_length"])
+    batch_size = int(config.get("training", {}).get("batch_size", 8))
 
-    with open(args.config) as f:
-        _config = yaml.safe_load(f)
+    engine = InferenceEngine.from_checkpoint(args.checkpoint, config=config, tokenizer=None, device="auto")
+    device = engine.device
 
-    print("Evaluation module — to be completed with full model implementation")
-    print(f"Checkpoint: {args.checkpoint}")
-    print(f"Config: {args.config}")
+    loader_kwargs = {"batch_size": batch_size, "shuffle": False}
+    val_loader = torch.utils.data.DataLoader(TextDataset(config["data"]["val_path"], ctx), **loader_kwargs)
+    test_loader = torch.utils.data.DataLoader(TextDataset(config["data"]["test_path"], ctx), **loader_kwargs)
+    train_loader = torch.utils.data.DataLoader(TextDataset(config["data"]["train_path"], ctx), **loader_kwargs)
 
-    # Placeholder output
+    max_batches = args.max_batches if args.max_batches > 0 else None
+    val_loss = evaluate_loss(engine.model, val_loader, device, max_batches)
+    test_loss = evaluate_loss(engine.model, test_loader, device, max_batches)
+    mem = evaluate_memorization(engine.model, train_loader, val_loader, device, max_batches)
+
+    print(f"device={device} ctx={ctx} batch={batch_size}")
+    print(f"val loss : {val_loss:.4f}  ppl={perplexity(val_loss):.2f}")
+    print(f"test loss: {test_loss:.4f}  ppl={perplexity(test_loss):.2f}")
+    print(f"memorization gap (train vs val): {mem['gap']:.4f} nats "
+          f"(train {mem['train_loss']:.4f}, val {mem['heldout_loss']:.4f})")
+
+    probes = probe_generation(engine, list(args.prompts), max_new_tokens=args.max_tokens)
+    print("\ngeneration probes:")
+    for p in probes:
+        print(f"\n  > {p.prompt}")
+        print(f"  [{p.finished_reason}, {len(p.token_ids)} tokens] {p.text.strip()}")
+
     results = {
         "checkpoint": str(args.checkpoint),
-        "config": str(args.config),
-        "status": "pending_implementation",
+        "val_loss": val_loss,
+        "val_perplexity": perplexity(val_loss),
+        "test_loss": test_loss,
+        "test_perplexity": perplexity(test_loss),
+        "memorization": {"train_loss": mem["train_loss"], "heldout_loss": mem["heldout_loss"], "gap": mem["gap"]},
+        "generation": [{"prompt": p.prompt, "text": p.text, "finished_reason": p.finished_reason, "tokens": len(p.token_ids)} for p in probes],
     }
-
-    with open(args.output, "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"Results saved to {args.output}")
+    if args.out:
+        args.out.write_text(json.dumps(results, indent=2), encoding="utf-8")
+        print(f"\nwrote: {args.out}")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

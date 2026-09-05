@@ -4,7 +4,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-08-28
+## Last Updated: 2026-09-06
 
 ---
 
@@ -374,6 +374,79 @@ could game/sleep): at step ~900/100k, train loss 8.61 (ln16000=9.68 floor; withi
 
 ---
 
+## Stage 6 Complete — WikiText-103 Training Finished + Stage 8 Evaluation Built (2026-09-05/06)
+
+### The training run (overfit fix verified end-to-end)
+
+Run `checkpoints/wikitext103/run_20260905-194750/` (launched 21:47, fresh, no resume)
+then resumed as `run_20260905-215250/` after a power cut at step ~31,100. Final state
+at 100k steps in `run_20260905-215250/` (last.pt + best.pt + metrics.jsonl + config.yaml
++ reproducibility.json):
+
+- **Final train loss 5.22, final val loss 5.16 (held ~5.162 plateau from step 95k).**
+- Val trajectory: 9.85 @ 0 -> 8.21 @ 1500 -> 5.70 @ 30k -> 5.33 @ 60k -> 5.16 @ 100k.
+  Monotonic down with a clean plateau - the opposite of the WikiText-2 run, which
+  bottomed 6.84 @ 13k then rose to 7.49. The overfit fix is proven.
+- Throughput ~25k tok/s, GPU 216.6 MB, LR warmup 1000 -> cosine decay to ~0.
+- Power cut recovery: resumed from `last.pt` at step 30,000 (`--resume
+  checkpoints/wikitext103/run_20260905-194750/last.pt`), only ~1,100 steps lost
+  (~3 min). `best.pt` in the old run was truncated by the power cut mid-write
+  (read fails, same file size as last.pt) - harmless, never loaded; the resume
+  run's best.pt was recomputed from scratch. Periodic `last.pt` fired correctly
+  (the save_every=2000 fix from the earlier power-cut recovery held up).
+
+### Stage 8 evaluation (built, tested, run)
+
+New `evaluation/` package (reuses `training.loss.lm_cross_entropy`,
+`data_pipeline.dataset.TextDataset`, `inference.engine.InferenceEngine`,
+`training.train.resolve_device` - no duplicated logic):
+
+- `evaluation/perplexity.py` - `evaluate_loss` (mean per-token CE over a loader)
+  + `perplexity` (exp). 
+- `evaluation/memorization.py` - `evaluate_memorization` returns train/heldout loss,
+  gap (heldout - train), and ppl. Positive gap = the memorization signature.
+- `evaluation/generation_eval.py` - `probe_generation` runs fixed prompts through
+  the engine (the established "same questions" protocol) and returns records.
+- `scripts/evaluation.py` rewritten from placeholder to a thin CLI: loads a
+  checkpoint, measures val/test loss + ppl, the train-vs-val memorization gap,
+  and generation probes; `--out` writes a JSON report.
+- Tests: `tests/test_evaluation.py` (8 new), suite 84 -> 92, all pass.
+
+Measured on `run_20260905-215250/last.pt` (via the new CLI):
+
+| Metric | Value |
+|---|---|
+| val loss / ppl | 5.162 / 174.5 |
+| test loss / ppl | 5.106 / 165.0 |
+| memorization gap (train 5.18 vs val 5.16) | **-0.02 nats** (no memorization) |
+
+The gap went from **+3.8 nats (WikiText-2)** to **~0 (WikiText-103)** - the measured
+"what not to do" vs "healthy" pair for `DOCUMENTATION/experiments.md`.
+
+### Chat-test (visible terminal, `inference.generate`)
+
+Fixed 5-prompt suite on `last.pt`. Output is fluent-looking but factually void
+Wikipedia-style prose (e.g. "The capital of France ised a campaign against British
+trade...", "The Earth orbits the Sun becauseularitated its disappointment.").
+It learned Wikipedia structure (section headers "== Taxonomy ==", "The type
+specimen was first discovered in 1951") but no factual knowledge - expected for a
+13M base model at 1.9 epochs, and NOT an instruction-tuned model. Coherence is far
+beyond the 2k-step gibberish from earlier sessions (Stage 6 milestone regression
+check).
+
+### What's next (parked, for next session)
+
+1. Manual/adversarial step: evaluate failure modes (repetition loops like "Nationals/
+   GDC" seen in chat-test), then decide SFT/instruction data for AtlasLLM-Instruct.
+2. The full automated data pipeline (DATA_PIPELINE.md): registry, adapters,
+   filtering, dedup, mixing, shards, manifests - starting with the TinyStories
+   debug source, then FineWeb-Edu mixture for AtlasBase. This unlocks real
+   pretraining beyond the WikiText-103 baseline.
+3. Extend the experiment grid (configs/experiments/) now that scripts/evaluation.py
+   gives a real comparison CLI.
+
+---
+
 ## User Preferences
 
 - Clean, well-documented project
@@ -386,17 +459,15 @@ could game/sleep): at step ~900/100k, train loss 8.61 (ln16000=9.68 floor; withi
 
 ---
 
-## Next Session: Stage 6 — WikiText-103 training; chat-test + evaluate
+## Next Session: Stage 6 DONE (WikiText-103) -> Stage 8 done, data pipeline next
 
-1. Relaunch the overfit fix: `python -m training.train --config configs/wikitext103.yaml`
-   (108M-token corpus, ~1.9 epochs over 100k steps, ~2.2 h on GTX 1070). Optionally instead
-   resume the early-stopped step-900 snapshot: `--resume checkpoints/wikitext103/run_20260828-011005/last.pt`.
-2. Expect val loss to FALL through the run (unlike the WikiText-2 run where val rose 6.84→7.49).
-   If val plateaus or rises while train falls, the corpus is still too small — next lever is
-   larger data (OpenWebText subset, ~50-90 MB stream per the dataset strategy).
-3. Chat-test with the SAME questions used previously once the run is past ~25-50k steps; compare
-   against `run_20260827-210202/best.pt` (val 6.8413, the WikiText-2 best) as the baseline.
-4. Do NOT change architecture during this stage; only hyperparameters if clearly broken.
-5. Stage 8 (evaluation) starts once this run produces meaningful checkpoints. Docs drafted in
-   `DOCUMENTATION/experiments.md`, `harness.md` (honestly marked PLANNED; `evaluation/`,
-   `safety/`, `harness/`, `monitoring/` are empty stubs).
+1. Stage 6 complete: `run_20260905-215250/` (last.pt, val 5.16) is the milestone
+   checkpoint. Stage 8 evaluation built (evaluation/ package + CLI + tests).
+2. Bigger data (OpenWebText/other) is NOT needed for the baseline - the WikiText-103
+   val curve plateaued healthy at 5.16. Next data work is the DATA_PIPELINE.md
+   automated pipeline (TinyStories debug source -> FineWeb-Edu mixture).
+3. Model is a base LM (not instruction-tuned); expect factually void output.
+4. Do NOT change architecture; the next training stages are SFT/instruction data
+   decisions, then AtlasLLM-Instruct.
+5. If further pretraining runs land, re-run `scripts/evaluation.py` to compare
+   perplexity/memorization/generation across checkpoints.

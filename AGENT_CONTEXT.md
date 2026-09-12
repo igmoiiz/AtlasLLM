@@ -4,7 +4,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-09-06
+## Last Updated: 2026-09-12
 
 ---
 
@@ -471,3 +471,56 @@ check).
    decisions, then AtlasLLM-Instruct.
 5. If further pretraining runs land, re-run `scripts/evaluation.py` to compare
    perplexity/memorization/generation across checkpoints.
+
+---
+
+## Session 2026-09-12: DATA PIPELINE DONE — AtlasTiny built + Rule-24 gate passed
+
+### What landed
+
+- **Automated data pipeline** (`data_pipeline/`) implemented and committed:
+  `sources.py` (HF acquire → records.jsonl cache), `documents.py` (normalize /
+  language / quality / dedup / sample / 90-5-5 split → interim JSONL + stats),
+  `packing.py` (`pack_split` → uint16 `.bin`, `write_meta`), `manifest.py`
+  (`validate_bin` / `validate_meta` / `build_manifest` / `write_reports`),
+  `pipeline.py` (resumable orchestrator: acquire→process→tokenizer→tokenize→
+  finalize; standalone `--stage finalize` reconstructs provenance + bin paths
+  from config + persisted stats). CLI: `python -m data_pipeline.pipeline
+  --config configs/<name>.yaml [--stage X] [--force]`. 21 pytest tests green,
+  ruff clean. Full suite 113 passed.
+- **AtlasTiny-v1** built (config `configs/tinystories.yaml`): 199,955 docs
+  acquired from `roneneldan/TinyStories`, 197,555 kept after 2,400 dedup, 16k BPE
+  tokenizer trained on a 1/10 corpus sample (162 MB full corpus risks >32 GB RAM;
+  ~16 MB sample is equivalent — same fix as WikiText-103). Tokens 22.9M train /
+  1.26M val / 1.28M test @ ctx 256. Manifest + report under `reports/data/AtlasTiny-v1/`.
+- **Rule-24 gate passed** (`configs/overfit-tinystories.yaml`, slice run
+  `checkpoints/tinystories-overfit/run_20260912-194102/`): train loss 9.856 →
+  0.247, memorization gap **+13.55 nats** (val 13.80) — decisive memorization on
+  a 300k-token slice @ ~68 epochs proves dataset→tokenizer→model→loss→optimizer→
+  backward works before any pretraining.
+- Full AtlasTiny run `checkpoints/tinystories/run_20260912-192907/last.pt`:
+  8k steps (~1.4 epochs), train 5.80 / best val 5.93 / test ppl 385, memorization
+  gap ~0, coherent TinyStories-style generation (proves the new corpus trains
+  healthily too).
+- Committed + pushed to `main` (`62e5d84`).
+
+### Notes / gotchas
+
+- Background scheduling: run long jobs with `Start-Process python -u ... -WindowStyle
+  Hidden -RedirectStandardOutput <log> -RedirectStandardError <log>.err`; the tool
+  wrapper prints `Unknown: ChildProcess.kill` but the process DOES start. Use `-u` —
+  plain `python` buffers stdout and the log stays empty while running.
+- Standalone `--stage finalize` must rebuild `bin_paths` from `config["data"]`
+  and `sources`/`source_stats` from registry + persisted stats (empty ctx).
+- Full-corpus 16k BPE training OOM-crashed the background pipeline silently (no
+  stderr traceback); the 1/10 corpus sample avoids it.
+
+### Next steps
+
+1. AtlasBase pretraining: build the FineWeb-Edu mixture through the same pipeline
+   (add registry entries + adapters), decide model size/schedule, then real
+   pretraining on the GTX 1070.
+2. Manual/adversarial eval of the AtlasTiny run (repetition loops, coherence)
+   before deciding SFT/instruction data for AtlasLLM-Instruct.
+3. Extend the experiment grid (`configs/experiments/`) now that evaluation CLI
+   exists — AtlasTiny is a cheap, fast corpus for depth/width sweeps.

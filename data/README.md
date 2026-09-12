@@ -57,21 +57,42 @@ data/
 
 **Interim:** `data/interim/wikitext-103-raw/corpus.txt` = train + validation text. `data/interim/wikitext-103-raw/corpus_sample.txt` = every 10th line (1/10 systematic sample, ~53.7 MB): the full 539 MB no-pretokenizer BPE pass exceeds 32 GB RAM, but a 16k vocabulary is equivalent for this domain. Both reproducibly derived from `raw/`.
 
+---
+
+**AtlasTiny (TinyStories)** — added 2026-09-12 as the automated data-pipeline milestone (DATA_PIPELINE.md): acquire → process → tokenizer → tokenize → finalize, driven by `configs/tinystories.yaml`.
+
+| Field          | Value              |
+|----------------|--------------------|
+| Dataset name   | AtlasTiny-v1       |
+| Source         | https://huggingface.co/datasets/roneneldan/TinyStories |
+| License        | CC BY-SA 4.0       |
+| Download date  | 2026-09-12         |
+| Raw cache      | `data/raw/tinystories/records.jsonl` (185.8 MB, 199,955 docs) |
+| Language       | English only (language filter) |
+| Post-filter    | 197,555 docs kept, 2,400 duplicates rejected |
+| Token count    | train 22,894,678 / val 1,259,977 / test 1,281,431 (16k BPE, ctx 256) |
+| Checksums      | `data/processed/tinystories/manifest.json` (validation gate + provenance) |
+
+**Interim:** `data/interim/tinystories/{train,val,test}.jsonl` + `processing_stats.json`. Tokenizer corpus: `data/interim/tinystories/corpus_sample.txt` = every 10th line of the full corpus (1/10 systematic sample, ~16 MB) — the full 162 MB no-pretokenizer BPE pass risks exceeding 32 GB RAM; a 16k vocabulary is equivalent for this domain (same reasoning as WikiText-103).
+
+**Rules 24 gate:** the slice-overfit run `checkpoints/tinystories-overfit/run_20260912-194102/` verified train loss collapses 9.856 → 0.247 with a +13.55 nats train-vs-heldout memorization gap, proving the whole dataset→tokenizer→model→loss→optimizer→backward path before any pretraining proceeds.
+
 ## Processed Datasets
 
-Tokenized by `python -m data_pipeline.preprocessing --config configs/<name>.yaml` → raw uint16 `.bin` files + `meta.json` (vocab, context, per-split token/sequence counts, tokenizer path, created). Bins are tokenizer- and context-specific:
+Tokenized by `python -m data_pipeline.pipeline --config configs/<name>.yaml` → raw uint16 `.bin` files + `meta.json` (vocab, context, per-split token/sequence counts, tokenizer path, created) + `manifest.json` (validation gate). Bins are tokenizer- and context-specific:
 
 | Config       | Tokenizer (vocab) | Context | Split       | Tokens      | Sequences |
 |--------------|-------------------|---------|-------------|-------------|-----------|
 | small        | small (16,000)    | 256     | train/val/test | 2,116,813 / 219,289 / 258,561 | 8,268 / 856 / 1,010 |
 | wikitext103  | wikitext103 (16,000) | 256 | train/val/test | 107,946,880 / 224,705 / 258,166 | 421,667 / 877 / 1,008 |
 | debug        | debug (1,280)     | 32      | train/val/test | 6,910,924 / 723,663 / 817,836 | 215,966 / 22,614 / 25,557 |
+| tinystories  | tinystories (16,000) | 256 | train/val/test | 22,894,678 / 1,259,977 / 1,281,431 | 89,432 / 4,921 / 5,005 |
 
-Outputs are git-ignored (`data/processed/`); `meta.json` records everything needed to reproduce them.
+Outputs are git-ignored (`data/processed/`); `meta.json` and `manifest.json` record everything needed to reproduce them.
 
 ## Adding a Dataset
 
-1. Place raw files in `data/raw/`
-2. Document provenance in this README
-3. Run preprocessing pipeline
+1. Add a registry source + processing filters under `pipeline:` in the config
+2. Run `python -m data_pipeline.pipeline --config configs/<name>.yaml` (resumable, `--force` rebuilds)
+3. Document provenance in this README
 4. Store results in `data/processed/`

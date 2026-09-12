@@ -1,0 +1,48 @@
+# AtlasLLM-Tiny overfit gate (AGENTS Rule 24)
+# Same model geometry as tinystories.yaml but trained for many epochs on a
+# 300k-token slice of the AtlasTiny train split with dropout disabled. The
+# gate passes when train loss collapses toward 0 while val loss stays high:
+# exactly what a healthy memorizing pipeline must show.
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 128
+  n_layers: 4
+  n_heads: 4
+  d_ff: 512
+  dropout: 0.0
+  bias: false
+
+tokenizer:
+  vocab_size: 16000
+  min_frequency: 2
+  corpus_path: "data/interim/tinystories/corpus_sample.txt"
+
+training:
+  batch_size: 16
+  learning_rate: 1.0e-3
+  weight_decay: 0.0
+  max_steps: 5000
+  warmup_steps: 100
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/tinystories-slice/train.bin"
+  val_path: "data/processed/tinystories-slice/val.bin"
+  test_path: "data/processed/tinystories-slice/test.bin"
+  tokenizer_path: "tokenizer/model/tinystories"
+
+checkpoint:
+  dir: "checkpoints/tinystories-overfit"
+  save_every: 1000
+
+logging:
+  log_every: 50
+  val_every: 250
+  max_val_batches: 50
+  tensorboard: false
+
+device: "auto"
+dtype: "float32"

@@ -147,12 +147,22 @@ The overfit study is the first controlled (same-model, different-corpus) compari
 |-----|------|-------------|------------------|---------------|----------------------|----------------|
 | `run_20260827-231105/last.pt` | WikiText-2 | 2.1M | 3.68 | 7.49 @ 100k | +3.8 nats | exp(7.49) ≈ 1787 |
 | `run_20260905-215250/last.pt` | WikiText-103 | 108M | 5.18 | 5.16 @ 100k | -0.02 nats | exp(5.16) ≈ 174 |
+| `tinystories/run_20260912-192907/last.pt` | AtlasTiny | 22.9M | 5.80 | 5.93 @ 8k | +0.00 nats | exp(5.93) ≈ 380 |
+| `tinystories-overfit/run_20260912-194102/last.pt` | AtlasTiny slice (300k) | 300k | 0.25 | 13.80 @ 5k | +13.55 nats | exp(13.80) ≈ 0.99M |
 
 The gap metric is measured by `scripts/evaluation.py`: held-out loss minus train
 loss on matching passages. WikiText-2 ran ~97 epochs and memorized (gap +3.8);
 WikiText-103 ran ~1.9 epochs and generalizes (gap ~0, test ppl 165). Same model
 and schedule in both runs - the corpus size is the only change. See
 [training.md](training.md) and the run metrics for the full curves.
+
+The last two rows are the AtlasTiny data-pipeline milestone (2026-09-12). The
+AtlasTiny full run trained the small model for 8k steps (~1.4 epochs) on the new
+tokenized corpus and generalizes (gap ~0, coherent TinyStories-style generation).
+The slice run is the AGENTS rule-24 gate: dropout off, lr 1e-3, 5k steps over a
+300k-token slice (~68 epochs) -> train loss collapses 9.856 -> 0.247 with a
++13.55 nats memorization gap, proving the dataset->tokenizer->model->loss->
+optimizer->backward path before any pretraining proceeds.
 
 Measured with:
 

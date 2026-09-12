@@ -1,0 +1,81 @@
+# AtlasLLM-Tiny — TinyStories debug dataset + overfit-gate model
+# Milestone: prove the automated data pipeline end-to-end (DATA_PIPELINE.md)
+# on a bounded single HuggingFace source, then train a small model that
+# overfits the resulting train split (AGENTS Rule 24).
+# Target: GTX 1070 8GB VRAM
+
+pipeline:
+  dataset:
+    name: "AtlasTiny-v1"
+    version: 1
+  paths:
+    raw: "data/raw"
+    interim: "data/interim"
+    reports: "reports/data"
+  registry:
+    - name: tinystories
+      role: debug
+      source: huggingface
+      identifier: "roneneldan/TinyStories"
+      hf_split: "train"
+      enabled: true
+      target_fraction: 1.0
+      max_documents: 200000
+  processing:
+    languages: ["en"]
+    min_chars: 50
+    max_chars: null
+    min_alpha_ratio: 0.4
+    dedup: true
+    sample:
+      seed: 42
+      fraction: 1.0
+    split:
+      seed: 42
+      ratios: {train: 0.90, val: 0.05, test: 0.05}
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 128
+  n_layers: 4
+  n_heads: 4
+  d_ff: 512
+  dropout: 0.1
+  bias: false
+
+tokenizer:
+  vocab_size: 16000
+  min_frequency: 2
+  # 1/10 systematic line sample of corpus.txt (like wikitext103). The full
+  # 162 MB no-pretokenizer BPE pass exceeds the machines RAM safety margin;
+  # a ~16 MB sample yields an equivalent 16k vocabulary for this domain.
+  corpus_path: "data/interim/tinystories/corpus_sample.txt"
+
+training:
+  batch_size: 16
+  learning_rate: 5.0e-4
+  weight_decay: 0.1
+  max_steps: 8000
+  warmup_steps: 200
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/tinystories/train.bin"
+  val_path: "data/processed/tinystories/val.bin"
+  test_path: "data/processed/tinystories/test.bin"
+  tokenizer_path: "tokenizer/model/tinystories"
+
+checkpoint:
+  dir: "checkpoints/tinystories"
+  save_every: 1000
+
+logging:
+  log_every: 100
+  val_every: 500
+  max_val_batches: 50
+  tensorboard: true
+
+device: "auto"
+dtype: "float32"

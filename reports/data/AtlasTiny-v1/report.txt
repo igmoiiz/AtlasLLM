@@ -1,0 +1,11 @@
+Dataset: AtlasTiny-v1 v1
+Documents (kept):   197,555
+  train:  177,792 docs      22,894,678 tokens      89,432 sequences
+  val  :    9,768 docs       1,259,977 tokens       4,921 sequences
+  test :    9,995 docs       1,281,431 tokens       5,005 sequences
+Sources: {"tinystories": 197555}
+Language labels: {"en": 199955}
+Rejection reasons: {"duplicate": 2400}
+Chars: total=177,985,237 min=205 median=787 mean=900.9 max=5,499
+Tokenizer: {"status": "cached"}
+Config: {"model_vocab_size": 16000, "context_length": 256, "training_seed": 42}

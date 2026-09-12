@@ -1,0 +1,44 @@
+{
+  "checkpoint": "checkpoints\\atlasbase\\run_20260912-232905\\last.pt",
+  "val_loss": 5.417387554645538,
+  "val_perplexity": 225.28979576490445,
+  "test_loss": 5.412334315776825,
+  "test_perplexity": 224.1542241858632,
+  "memorization": {
+    "train_loss": 5.39721978187561,
+    "heldout_loss": 5.417387554645538,
+    "gap": 0.020167772769927872
+  },
+  "generation": [
+    {
+      "prompt": "The capital of France is",
+      "text": "The capital of France is taken by the taxonomical Revolutionary War and The Seven Ribalog\nA Graf of Father Hirling, Jim is formally used with the Sicila Graham to the Wall (in Abu Alien) in the Graham Fred Shaun, and in Nathaloguli has given all a different Man Alice Hirr, as well as other Behraf's Sicila consolidated M",
+      "finished_reason": "max_len",
+      "tokens": 105
+    },
+    {
+      "prompt": "Once upon a time,",
+      "text": "Once upon a time, to the first hand of the first of Balkans were still in place for an average of the sixties each year. A recent day is approximately 10 times per year to 4 years, and even when it becomes no longer. It may be an individual in the day, and most of its day for only 5 years, though only about 18 or 5 years (65 days). Both the day the week, while the day is 6 years old.\nThe next week, the second week. The Balker last year, when one year or last week, the ",
+      "finished_reason": "max_len",
+      "tokens": 104
+    },
+    {
+      "prompt": "Artificial intelligence is",
+      "text": "Artificial intelligence is too late, then in the case of an open shelter, it would take place. So I could take for you that my eyes, than you could tell you the means to my shelter, my other prax?\nIf you were doing there was a very small amount of money you had throw in the face of our heart. But you never want them not having to be good for you for you? Do you have a better answer.\nWhat we know? They know what things do so that they really know and what ",
+      "finished_reason": "max_len",
+      "tokens": 105
+    },
+    {
+      "prompt": "In 1969, humans first",
+      "text": "In 1969, humans first, it was not being able to be destroy the union that it was impossible.[(()] [(3) [the Penton penton [ Tom penton [ 4], [ ] [ ] [ T], [ ], [ Sham][ ] [ ]]] [ ] [  ]\n[ ]\n] [ [ [ ] [ ]] [ [ ] [ ",
+      "finished_reason": "max_len",
+      "tokens": 105
+    },
+    {
+      "prompt": "The Earth orbits the Sun because",
+      "text": "The Earth orbits the Sun because, there still has some stars and forms. At first, scientists have pointed out these graves like Earth, planets are very small and stars, and even have evolved starving our Earth\u2019s life in the planet but were seen in the planet.\nThe data for Earth has already already been discovered that the sun's surface (a planet from all stars) could look like the planetary surface to our planet.\nThe image of planetary planetary (OP) is a planet that has been found to be known and starved to star",
+      "finished_reason": "max_len",
+      "tokens": 107
+    }
+  ]
+}

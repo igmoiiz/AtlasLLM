@@ -149,6 +149,7 @@ The overfit study is the first controlled (same-model, different-corpus) compari
 | `run_20260905-215250/last.pt` | WikiText-103 | 108M | 5.18 | 5.16 @ 100k | -0.02 nats | exp(5.16) ≈ 174 |
 | `tinystories/run_20260912-192907/last.pt` | AtlasTiny | 22.9M | 5.80 | 5.93 @ 8k | +0.00 nats | exp(5.93) ≈ 380 |
 | `tinystories-overfit/run_20260912-194102/last.pt` | AtlasTiny slice (300k) | 300k | 0.25 | 13.80 @ 5k | +13.55 nats | exp(13.80) ≈ 0.99M |
+| `atlasbase/run_20260912-232905/last.pt` | AtlasBase-v1 (FineWeb-Edu) | 186M | 5.62 | 5.4174 @ 94k | +0.02 nats | exp(5.4174) ≈ 225 |
 
 The gap metric is measured by `scripts/evaluation.py`: held-out loss minus train
 loss on matching passages. WikiText-2 ran ~97 epochs and memorized (gap +3.8);
@@ -163,6 +164,15 @@ The slice run is the AGENTS rule-24 gate: dropout off, lr 1e-3, 5k steps over a
 300k-token slice (~68 epochs) -> train loss collapses 9.856 -> 0.247 with a
 +13.55 nats memorization gap, proving the dataset->tokenizer->model->loss->
 optimizer->backward path before any pretraining proceeds.
+
+The final row is the AtlasBase-v1 pretraining milestone (2026-09-12): the first
+real pretraining corpus (Base tier, single-source FineWeb-Edu, see data/README).
+The proven 13M small model ran 95k steps (~1.06 epochs, 186M train tokens, loss
+9.854 -> 5.62). Val loss descended monotonically to 5.4174 at step 94k and the memorization gap is +0.02 nats - the model generalizes, not
+memorizes. Higher entropy than WikiText-103, so ppl 225 > the old 174 is not a
+regression; the Archive is a different, noisier web domain. Generation at 13M
+params is structurally fluent but not yet knowledgeable. Run split by one power
+cut at step 82k; resumed from best.pt via --resume with exact continuation.
 
 Measured with:
 

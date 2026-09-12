@@ -4,7 +4,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-09-12
+## Last Updated: 2026-09-13
 
 ---
 
@@ -471,6 +471,66 @@ check).
    decisions, then AtlasLLM-Instruct.
 5. If further pretraining runs land, re-run `scripts/evaluation.py` to compare
    perplexity/memorization/generation across checkpoints.
+
+---
+
+## Session 2026-09-12/13: ATLASBASE V1 TRAINED - first real pretraining run (fineweb-edu single source)
+
+Milestone: the first real AtlasLLM pretraining reached max_steps=95,000 cleanly
+(~1.06 epochs / 186M train tokens) on the new AtlasBase-v1 corpus, and the final
+checkpoint was formally evaluated.
+
+### What was done
+
+- **AtlasBase-v1 corpus** (Base tier, contiguous milestone of DATA_PIPELINE.md):
+  ran the automated pipeline on a *single* HF source `HuggingFaceFW/fineweb-edu`
+  (no mixture machinery yet) - streamed first 200,000 train rows (979.6 MB raw cache),
+  kept 199,957 after filters (1 duplicate, 42 unknown-language), tokenizer trained on
+  the 1/10 corpus sample (88 MB / 17,975 docs), binned 186,058,386 / 10,062,577 /
+  11,013,884 tokens (16k BPE, ctx 256). Config: `configs/atlasbase.yaml`.
+- **Training**: proven 13M "small" geometry (d256, 6 layers, 8 heads, batch 8,
+  lr 3e-4 warmup 1k, cosine to 95k). First segment `run_20260912-211829` (steps
+  0-82,000). A power cut corrupted `last.pt` at 82k (written mid-crash) but
+  `best.pt` at the same step survived intact; resumed via
+  `--resume run_.../best.pt` into continuation `run_20260912-232905` (82,001-94,999).
+  Val loss descended monotonically: 5.432@82k -> 5.427@84k -> 5.424@86k ->
+  5.421@88k -> 5.419@90k -> 5.418@92k -> 5.4174@94k; `last.pt` at 94,999.
+- **Evaluation** (`scripts.evaluation`, reports/data/AtlasBase-v1/eval_final.json):
+  val 5.4174 / ppl 225.29, test 5.4123 / ppl 224.15, memorization gap +0.02 nats
+  (train 5.3972 vs val 5.4174) - generalizes, does not memorize. Generation at
+  13M params is structurally fluent but not knowledgeable; ppl > the WikiText-103
+  174 baseline is domain entropy (web vs encyclopedia), not regression.
+- Recorded in DOCUMENTATION/experiments.md comparison table + `data/README.md`
+  provenance, committed + pushed.
+
+### Interruption lessons (validated again in production)
+
+- `last.pt` writing precisely during a power cut can produce a truncated file;
+  `best.pt` (written at the same step) survived and resumed identically - both
+  are full model+optimizer+scheduler+step bundles, interchangeable for `--resume`.
+- Post-boot resume after an interruption: pick the newest intact checkpoint
+  (try `last.pt`, fall back to `best.pt`), run
+  `python -m training.train --config <cfg> --resume <ckpt.pt>` in a visible window.
+- Resumed training exact-continues (LR curve, val curve unchanged) even though
+  the new segment starts a fresh `run_<timestamp>/` dir.
+
+### Notes / gotchas
+
+- fineweb-edu first streaming connection takes ~3 min (large parquet dataset);
+  subsequent acquire uses the cached `records.jsonl`.
+- Training throughput collapses to ~5-13k tok/s when the GTX 1070 is shared with
+  gaming (vs a clean ~28k tok/s) - expected, harmless to the run.
+- `--stage` accepts exactly one stage; chaining `--stage acquire --stage process`
+  silently runs only the second.
+
+### Next steps
+
+1. Decide AtlasBase-v2 direction: more tokens (extend past 1 epoch) vs more data
+   (fineweb-edu full mix with Wikipedia/books/tech per DATA_PIPELINE.md) vs move
+   to SFT/instruction data for AtlasLLM-Instruct.
+2. Manual/adversarial eval of the AtlasBase run (repetition loops, coherence,
+   knowledge probes) - generation is fluent-but-empty at 13M, typical of scale.
+3. Extend the experiment grid now that the full pretraining path is proven.
 
 ---
 

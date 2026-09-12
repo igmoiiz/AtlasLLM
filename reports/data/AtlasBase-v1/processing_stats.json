@@ -1,0 +1,26 @@
+{
+  "rejection_reasons": {
+    "language_unknown": 42,
+    "duplicate": 1
+  },
+  "per_source": {
+    "fineweb_edu": 199957
+  },
+  "per_language": {
+    "en": 199958,
+    "unknown": 42
+  },
+  "split_counts": {
+    "train": 179749,
+    "val": 10023,
+    "test": 10185
+  },
+  "char_stats": {
+    "total": 967788627,
+    "min": 211,
+    "median": 2777,
+    "mean": 4839.983731502273,
+    "max": 541679
+  },
+  "total_documents": 199957
+}

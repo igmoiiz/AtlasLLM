@@ -1,0 +1,11 @@
+Dataset: AtlasBase-v1 v1
+Documents (kept):   199,957
+  train:  179,749 docs     186,058,386 tokens     726,790 sequences
+  val  :   10,023 docs      10,062,577 tokens      39,306 sequences
+  test :   10,185 docs      11,013,884 tokens      43,022 sequences
+Sources: {"fineweb_edu": 199957}
+Language labels: {"en": 199958, "unknown": 42}
+Rejection reasons: {"language_unknown": 42, "duplicate": 1}
+Chars: total=967,788,627 min=211 median=2,777 mean=4840.0 max=541,679
+Tokenizer: {"status": "cached"}
+Config: {"model_vocab_size": 16000, "context_length": 256, "training_seed": 42}

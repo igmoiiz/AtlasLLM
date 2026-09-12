@@ -1,0 +1,81 @@
+# AtlasLLM-Base - First real pretraining run
+# Single-source milestone: FineWeb-Edu streamed through the automated pipeline
+# (DATA_PIPELINE.md). No mixture machinery yet - one edu-quality-filtered HF
+# source as the whole corpus. Target: ~100-300M tokens (Base tier).
+# Target: GTX 1070 8GB VRAM
+
+pipeline:
+  dataset:
+    name: "AtlasBase-v1"
+    version: 1
+  paths:
+    raw: "data/raw"
+    interim: "data/interim"
+    reports: "reports/data"
+  registry:
+    - name: fineweb_edu
+      role: pretraining
+      source: huggingface
+      identifier: "HuggingFaceFW/fineweb-edu"
+      hf_split: "train"
+      enabled: true
+      target_fraction: 1.0
+      max_documents: 200000
+  processing:
+    languages: ["en"]
+    min_chars: 50
+    max_chars: null
+    min_alpha_ratio: 0.4
+    dedup: true
+    sample:
+      seed: 42
+      fraction: 1.0
+    split:
+      seed: 42
+      ratios: {train: 0.90, val: 0.05, test: 0.05}
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  d_ff: 1024
+  dropout: 0.1
+  bias: false
+
+tokenizer:
+  vocab_size: 16000
+  min_frequency: 2
+  # 1/10 systematic line sample of the processed train docs (like TinyStories).
+  # The full corpus BPE pass exceeds the machine's safe RAM margin; a ~1/10
+  # sample yields an equivalent 16k vocabulary for this domain.
+  corpus_path: "data/interim/fineweb_edu/corpus_sample.txt"
+
+training:
+  batch_size: 8
+  learning_rate: 3.0e-4
+  weight_decay: 0.1
+  max_steps: 95000
+  warmup_steps: 1000
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/atlasbase/train.bin"
+  val_path: "data/processed/atlasbase/val.bin"
+  test_path: "data/processed/atlasbase/test.bin"
+  tokenizer_path: "tokenizer/model/atlasbase"
+
+checkpoint:
+  dir: "checkpoints/atlasbase"
+  save_every: 1000
+
+logging:
+  log_every: 100
+  val_every: 2000
+  max_val_batches: 200
+  tensorboard: true
+
+device: "auto"
+dtype: "float32"

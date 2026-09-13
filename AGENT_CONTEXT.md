@@ -584,3 +584,71 @@ checkpoint was formally evaluated.
    before deciding SFT/instruction data for AtlasLLM-Instruct.
 3. Extend the experiment grid (`configs/experiments/`) now that evaluation CLI
    exists — AtlasTiny is a cheap, fast corpus for depth/width sweeps.
+
+---
+
+## Session 2026-09-13: AtlasBase-v1 trained/evaled → v2 capacity step launched
+
+### Diagnostics (evidence → decision)
+
+- **AtlasBase-v1 training completed** (95k steps, 13M params, val 5.4174, test
+  ppl 224, memorization gap +0.02 nats). Survived a power cut: `last.pt` mid-write
+  corrupted, `best.pt` intact → `--resume checkpoints/atlasbase/run_20260912-232905/best.pt`
+  finished 82k→95k cleanly. Final checkpoint dir:
+  `checkpoints/atlasbase/run_20260912-232905/` (`last.pt` step 94,999, `best.pt` step 94,000).
+- **New shared metric** `evaluation/repetition.py::repetition_score(text, n=4)`
+  (moved out of `scripts/adversarial_eval.py`, DRY) — fraction of tokens inside a
+  repeated n-gram window; 0=novel continuation, ~1=loop.
+- **`scripts/sampling_sweep.py`** — temp × top-p grid ({0.1,0.3,0.5,0.7,0.9} ×
+  {0.8,0.9,0.95}, top_k 50, seed 42) on a 6-prompt fixed suite @ 200 tokens.
+  **Finding: repetition is a temperature artifact with no sweet spot.** Low T
+  (0.1–0.3) loops hard (rep 0.82→0.38); high T (0.7–0.9) kills repetition (→0.000)
+  but the scorecard proves the output is *diverse gibberish* (invented words /
+  topic drift), not coherence. Editing this dict key bug: per-prompt keys were
+  the first word ("The" collided across prompts) → fixed to index keys.
+- **`scripts/scorecard.py`** — manual-test rubric, same fixed prompt suite at
+  T=0.8 (the chat default). Metrics computed on **generated-only** tokens (earlier
+  bug: on_topic always 1.0 because prompt echo dominated; fixed via
+  `generated_text()` slicing token_ids after the prompt). Per-prompt: repetition,
+  prompt_echo, on_topic, fact_hit, finished_reason + full transcript.
+- AtlasBase-v1 manual chat (unseeded, human prompts) showed loops ("Migrat",
+  "Dickens") + word-string collapse — worse than the seeded eval (mean rep 0.009)
+  suggested → unseeded real usage is harsher than seeded probes.
+
+### Verdict
+
+Derailment is **model capacity**, not sampling — no sampling setting rescues a
+13M base LM. Manual test outputs (all with rep≈0): "Dyrialoga on Earth",
+"Marshire", "Crowmed Best Best Best", "your sponge from the face" — fluent
+skeleton, empty facts, zero echo. Scoring the failure as capacity → **AtlasBase-v2
+= capacity step, reuse the v1 corpus.**
+
+### AtlasBase-v2 (config `configs/atlasbase_v2.yaml`)
+
+- **48M params** (D=512, L=10, n_heads 8, d_ff 2048, ctx 256, vocab 16k) vs v1's
+  13M — a 3.7x capacity step with the *same* corpus/tokenizer (A+B: more data).
+- LR 3e-4 → 2e-4 for the param growth; batch 8, 95k steps, fp32, grad clip 1.0,
+  warmup 1k, AdamW wd 0.1 — all other v1 settings unchanged.
+- **Measured on the GTX 1070** (Rule 30, measure-first): D=512/L=8: 41.7M, 165ms/step,
+  1.84GB; D=512/L=10: 48M, 199ms/step, ~2.5GB; D=512/L=12: 54M, 235ms/step — all
+  fit 8GB (batch 8 ctx 256 fp32); picked L=10 → ~5.5h wall for 95k steps.
+- **Smoke run passed** (400 steps): 9.84 → 8.60, VRAM 752MB peak, checkpoints
+  written, clean. Smoke run dir deleted after validation.
+- **Expected:** val loss may not beat v1's 5.4174 (same tokens, more capacity);
+  the win that matters is scorecard coherence. Checkpoint dir
+  `checkpoints/atlasbase_v2/`, resume via `--resume .../run_<ts>/last.pt`.
+- **Launch:** `python -m training.train --config configs/atlasbase_v2.yaml`
+  (user runs in a visible terminal for Ctrl+C pause / gaming).
+
+### Committed + pushed (`4b4e4b4`)
+
+- `feat: sampling sweep + manual scorecard; shared repetition metric`
+
+### Next steps
+
+1. **AtlasBase-v2 training underway** → on completion run the identical
+   sweep + scorecard on v2 and compare v1 vs v2 head-to-head.
+2. If v2 val loss stalls (data-limited at 186M tokens / 48M params ≈ 3.9
+   tok/param, far under the ~20 Chinchilla target): follow-on **A = more
+   tokens** (full FineWeb-Edu mixture from DATA_PIPELINE.md, multi-epoch).
+3. Then SFT → AtlasLLM-Instruct.

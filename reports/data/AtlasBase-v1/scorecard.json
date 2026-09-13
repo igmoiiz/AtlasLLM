@@ -1,0 +1,68 @@
+{
+  "checkpoint": "D:\\WorkSpace\\LLMs\\AtlasLLM\\checkpoints\\atlasbase\\run_20260912-232905\\last.pt",
+  "rows": [
+    {
+      "kind": "autocomplete",
+      "prompt": "The capital of France is",
+      "text": " true to which our country has given us in all things. Our future is the largest country by which the local government can have more energy consumers in our country. The economy is quite important for our future.A few weeks ago, we are also an example of a growing number of people. The major economic system has expanded only 10 percent of the population has seen in the country\u2019s capital and most recent century.\nThe U.S. economy has become increasingly unlikely to have more economically been a real state on which our economy, are becoming more important.\nThe last few years, which has become more closely related to our population growth in Canada. It is very important to thirty years before the country has been a result of a better understanding of the world and its best economic development in our economy.\nThe report concludes about 88 million people from which our world is likely to grow.\nThe report has been published in the Journal of Health and the National Institute of Medicine and the National Institutes of Health Organisation.\nThe U.S. Restivation of Instaders is among the first major factories and the last decade. That will not be a better part of ",
+      "token_count": 203,
+      "repetition": 0.0,
+      "prompt_echo": 0.037383177570093455,
+      "on_topic": 0.8,
+      "fact_hit": false,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "story",
+      "prompt": "Once upon a time, in a quiet village,",
+      "text": " take it on both sides and take place within another side. To learn more about the sponger lines, there is no reason to be the one, and one would like the topic, how you don't take one of them and how you couldn't do it up? Take a topic for the second half is one step into another with one side.\nA short reef. to your spongue, a single, or other; a copy of the sponge from the face, your sponge, so that your body is your body from your heart, and you can go away with you or your ear, ask your pill or reef. You'll see your legs, what you are not?\"\nThe best way to get your arms and arms, you will find your face to your arms. Will you go through the right arms, you can do your hands. By your arm with your arms, it is possible to see your legs, you don't need your legs, check your arms, keeping your head and legs.\nThe next step, let ",
+      "token_count": 173,
+      "repetition": 0.0,
+      "prompt_echo": 0.011627906976744186,
+      "on_topic": 0.14285714285714285,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "autocomplete",
+      "prompt": "The Earth orbits the Sun because",
+      "text": ", there are four years now that the planet's Earth (0 to 0).\nTo learn more about the Moon on on Earth has already been discovered, about 125 million dollars. The Earth has gone up about 10,000 years ago. The planet's mission is more than 50 million million years ago. However, it's not going to find it until it comes to spaces. So we have to think we would have to know what's for our Earth and our solar system. It is that there is one of thick and an iconic plan, it's quite an interesting star? We don't know which a better one, the planet's Earth is that they're going to help us understand the planet's planet. They would want to know what are like Earth.\nWhat are the Earth (Over $20.1 billion (OP) of space ($650 billion (100 million) million in recent years), the global world and the Earth (OP). It has more than 50 billion years from 2012.\nThe Earth was founding more than 10,000 years ago in the United States. These are a growing number of Earth Earth will occur in the country and ",
+      "token_count": 188,
+      "repetition": 0.0,
+      "prompt_echo": 0.02247191011235955,
+      "on_topic": 0.4,
+      "fact_hit": false,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "fact",
+      "prompt": "List ten things you know about the planet Mars.",
+      "text": ")\nDyrialoga on Earth\nNext in Earth and Earth\nWake the sun's earth\nShuttle and Marshire from Jew Game Jet al Kleyrik by Flight and Orik Go Fanti Keri from Marshire\nAwareness on Earth\nBy Jet Prok\nNonstra Go on Marshire\nThe sun's Earth\nof Earth, the sun is about 6 to 900 miles in Kerlin's Earth with Earth on Earth.\nEursa Jetra's Light Go on Earth,\nMullia, Kerra's Earth will be the solar and orbit.\nThe planet is located at which our planet\u2019s Earth is about 2.5 miles of Earth. This Earth is about 40 kilometers a million meters (about 21000 km) southwest of Earth.\nAwarmer's Earth\u2019s Earth Wall is about 1000 miles (about 13",
+      "token_count": 116,
+      "repetition": 0.0,
+      "prompt_echo": 0.05172413793103448,
+      "on_topic": 0.3333333333333333,
+      "fact_hit": true,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "story",
+      "prompt": "The difference between a cat and a dog is",
+      "text": " time with a tiny blank, with a handful of a fever and dance it becomes swim.\nSome are more common than most pack but that I have a snack, what do you have to go back on it?\nFive food is a look at this time for people without bisking up.\nSo, let\u2019s get out for the children with punch to eat this spill.\nNo, you don't know how.\nThere's an extra good way to eat and your legs and get it your body in a hand. I don't have enough food to the good food you don't know if you'd have to get more food is more effective for bisel.\nWhat are the best try and what I do?\nFive foods in the food bypsuture? Fish foods are good for food.\nThe more fruits and vegetables don\u2019t eat enough food food.\nThe whole food is so well known, so they are about 5 million tonnes of food. The whole bee has a healthy diet and exercise. And it doesn't mean",
+      "token_count": 171,
+      "repetition": 0.0,
+      "prompt_echo": 0.042105263157894736,
+      "on_topic": 0.5,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "echo",
+      "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+      "text": "' Season.' The Crowmed Best Best Best Best on Best Best Best in Dan Best in Dan Game on Best in Dan Awarf in Dan Orik in Dan for Dan Best in Dan Dan Awarfold in Dan in Dan Nevada Gatra to his Best in Dan on Van Awarf of Best in Dan Brain Best in Dan Jim Raban Hastell (Dan Rabinski & Geso) (Dan Gatwad, 1991) and Nevadi (1994). Homas Fish Best & Less Gatra, the Crowsing Best in Dan Best in Dan Best in Dan Gatewadi; Beach Picture (1987). Fish Best Best ",
+      "token_count": 94,
+      "repetition": 0.07777777777777778,
+      "prompt_echo": 0.02857142857142857,
+      "on_topic": 0.08333333333333333,
+      "finished_reason": "max_len"
+    }
+  ]
+}

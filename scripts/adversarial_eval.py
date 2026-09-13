@@ -16,10 +16,10 @@ import json
 import sys
 from pathlib import Path
 
-import torch
 import yaml
 
 from evaluation.generation_eval import probe_generation
+from evaluation.repetition import repetition_score
 from inference.engine import InferenceEngine
 
 PROMPTS = [
@@ -34,21 +34,6 @@ PROMPTS = [
     "If you flip a coin, the probability of heads is",
     "Please repeat the last three words I wrote exactly: 'one two three'.",
 ]
-
-
-def repetition_score(text: str, n: int = 4) -> float:
-    """Fraction of tokens that fall inside a previously-seen n-gram window."""
-    tokens = text.split()
-    if len(tokens) < n + 1:
-        return 0.0
-    seen: set[str] = set()
-    repeated = 0
-    for i in range(len(tokens) - n):
-        window = " ".join(tokens[i : i + n])
-        if window in seen:
-            repeated += 1
-        seen.add(window)
-    return repeated / (len(tokens) - n)
 
 
 def main() -> None:

@@ -1,0 +1,68 @@
+{
+  "checkpoint": "D:\\WorkSpace\\LLMs\\AtlasLLM\\checkpoints\\atlasbase_v2\\run_20260915-201403\\best.pt",
+  "rows": [
+    {
+      "kind": "autocomplete",
+      "prompt": "The capital of France is",
+      "text": " taken by the British and British colonies in England (1516\u2013173). The British were very much in Europe (176\u2013134). Many of the major French colonies were established around the world, including the colonies (1831, 176\u20131837).\nIn 1538 the British colonies, which became known as the British colonies (1740\u20131783), the British colonies was established as British colonies. The British colonies were formed to an independent, independent colonies (1910\u20131912) and it became united for the colonies. Thirteen new colonies were created in the British Isles and was founded in 1845. The British colonies were founded by Larry de la G\u00e9rique de Pierre de L\u00e9rique, Inner de L\u00e9rique, Inner de L\u00e9rique, Inner de L\u00e9rique, T\u00e9rique, Inner de L\u00e9rique, Tran\u00e7e, and Eduardo de L\u00e9ri",
+      "token_count": 119,
+      "repetition": 0.05217391304347826,
+      "prompt_echo": 0.04,
+      "on_topic": 0.4,
+      "fact_hit": false,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "story",
+      "prompt": "Once upon a time, in a quiet village,",
+      "text": " take it with you and your family in the family of your family in dress.\nThe family is not going to be a tree in the family of the family in Hartford, but the family has no known or all other things like him. There is no way to get you with you from being in the family or family. Something that you know you are trying to find out for the family or family with it, the family has some positive effects on your family members. If you have a genuine family members (as your family has done so), you can also get me from your family or relatives or family members (including your family members, family members, homes, families, and families) and I know and I feel if you don't want to have any family members.\"\nThe family is only part of the family Yosemite family family. Many other families are also in the family Yosemite family and the other family are in the Yosemite family and family members. Much of this family is known for their family names or family. Management is sometimes called the name Y",
+      "token_count": 190,
+      "repetition": 0.010752688172043012,
+      "prompt_echo": 0.02564102564102564,
+      "on_topic": 0.2857142857142857,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "autocomplete",
+      "prompt": "The Earth orbits the Sun because",
+      "text": ", there are four stars in our solar system, which are very similar to Earth.\nThe Earth\u2019s Earth is about 100,000 miles (10 meters) per year. The planets will have a relatively small scale for about 50 million. The planet is about 51 million miles (1.2 million miles) from Earth to Earth. In all its orbit, Earth\u2019s atmosphere will be about 100 million kilometers (approximately $2 million miles) per year. The Earth is about 3 million kilometers (approximately $7 million and $750 million each), but the Earth is about 40 million kilometers (over 300 kilometers) away. It is about 1 million miles ($60 million and $10 million each) for nearly 100 million miles ($1 billion each) of total solar energy in the planet and of Earth.\nThe planet\u2019s energy is about 2.5 billion kilometers (12,000 miles) from the Earth\u2019s atmosphere and in the Earth\u2019s atmosphere, said Steve Pinkie, a former AOBI.\nThe planet has a growing number of important planets: Earth, Earth, ",
+      "token_count": 162,
+      "repetition": 0.0,
+      "prompt_echo": 0.03389830508474576,
+      "on_topic": 0.4,
+      "fact_hit": false,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "fact",
+      "prompt": "List ten things you know about the planet Mars.",
+      "text": "Fire Live Stories\nThe Earth is about 2.5 times larger than those Earth Moon. The Earth has been nearly as high as 10 times the Earth is about 1.7 times the Earth\u2019s surface and was so big that it is almost entirely difficult to see. The Earth\u2019s surface covering has almost 1 million miles to about 1.5 billion miles. That is the temperature of about 0.4 times greater than the Earth\u2019s surface.\nThe Earth is about 2.5 billion miles from Earth, about 4 billion kilometers long to about 1.8 billion years ago, according to the report.\nThis month from BBC News.\nThe Earth is about 2.5 billion kilometers per hour, according to a new study from the National Institutes of Health, said.Fire flour, water in the ocean is mostly one of the best ways to sustain natural and environmental risks for wildlife and environments. It has some natural ecosystems that make that a unique part of an environment is a huge problem for wildlife conservation and management of wildlife. The current research has shown that all of these important environmental benefits are being developed as a ",
+      "token_count": 186,
+      "repetition": 0.027472527472527472,
+      "prompt_echo": 0.021505376344086023,
+      "on_topic": 0.2222222222222222,
+      "fact_hit": false,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "story",
+      "prompt": "The difference between a cat and a dog is",
+      "text": " too far from getting into your body to keep your body healthy. A cat can have a \"caterpillar\" problem, because the body can get out from your body for a few hours.\nA caterpillar that has been a strong condition, usually affects the body from your body (if not so dehydrated) with enough energy to reduce your risk of heart attacks.\nNeither end up your brain every day, and it causes pain to develop an increased risk of heart attack. Have the person get more weight and it does a better chance of developing heart attack. You get an obese person in the past month.\nIn some cases, you know what are your body fat, what are your body fat, how is it important.\nIf you need medications, you will find some medicine to help you determine your risk of:\n- You may need medicine to take medicine to prevent heart attack by blocking the arteries, such as:\n- You may need to have a heart attack, or your heart attack or other medical condition.\n- You may have a heart attack\n- You may ",
+      "token_count": 185,
+      "repetition": 0.016574585635359115,
+      "prompt_echo": 0.05263157894736842,
+      "on_topic": 0.625,
+      "finished_reason": "max_len"
+    },
+    {
+      "kind": "echo",
+      "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+      "text": "'\nSometimes you say \"I don't know\" your words or phones. So what does that mean? Should you like to say to you?\nWhat do I like for this? Here are some books that are so smart as you're in an adult and are so small that people will have to get so high.\nSo, let's get out a little more time and more about the same word?\nWhat is a word I mean by chance, but your word is different from my own words?\nBy this time I don't understand what she wants for?\nSo, how did you know if I loved me while I had seen my friends? Well, it's not uncomfortable and I don't want to know what?\nHow are you happen to my family?\nAnd if I started to get my first word, then I can't tell you about my word?\nSo I did I didn't know that my word is a whole word but it was not an adjective or adjective or adjective or adjective or adject",
+      "token_count": 172,
+      "repetition": 0.017857142857142856,
+      "prompt_echo": 0.034482758620689655,
+      "on_topic": 0.25,
+      "finished_reason": "max_len"
+    }
+  ]
+}

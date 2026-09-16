@@ -4,7 +4,7 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-09-13
+## Last Updated: 2026-09-16
 
 ---
 
@@ -651,4 +651,74 @@ skeleton, empty facts, zero echo. Scoring the failure as capacity → **AtlasBas
 2. If v2 val loss stalls (data-limited at 186M tokens / 48M params ≈ 3.9
    tok/param, far under the ~20 Chinchilla target): follow-on **A = more
    tokens** (full FineWeb-Edu mixture from DATA_PIPELINE.md, multi-epoch).
+3. Then SFT → AtlasLLM-Instruct.
+
+---
+
+## Session 2026-09-15/16: ATLASBASE-V2 TRAINED + EVALUATED — capacity step validated
+
+### Training (95k steps, five power cuts)
+
+- Training ran across 5 power-cut interruptions and resumed cleanly every time
+  via `--resume .../last.pt` (or `best.pt` when last.pt was the truncated
+  victim). Exact continuation every time (new `run_<ts>/` dir, first logged
+  step = resume step + 100). Final run dir:
+  `checkpoints/atlasbase_v2/run_20260915-201403/` — `last.pt` + `best.pt` both
+  intact at step 94,999 (final step).
+- Resume chain: 3000 → 26000 → 28000 → 65000 → 86000 → 94999 (best.pt used
+  twice, at cuts #3 and #5). Throughput 3–10k tok/s depending on gaming.
+  Loss healthy overall (no reset observed on resume).
+
+### Results (reports/data/AtlasBase-v2/)
+
+| Metric | v1 (13M) | v2 (48M) | Δ |
+|---|---|---|---|
+| Val loss (best step) | 5.4174 @ 94k | **4.8282 @ 94.9k** | −0.59 |
+| Val ppl | 225.3 | **125.0** | −44% |
+| Test ppl | 224.2 | **126.5** | −44% |
+| Memo gap | +0.02 nats | +0.04 nats | healthy |
+
+- **Eval:** `python -m scripts.evaluation --checkpoint .../run_20260915-201403/best.pt`
+  — val 4.8282 / test 4.8403 / gap +0.04 (train 4.7897). Note: the eval script
+  needs `reports/data/AtlasBase-v2/` to exist before `--out` writes there
+  (FileNotFoundError otherwise).
+- **Sampling sweep** (`sampling_sweep.json`): v2 repetition vs temperature tracks
+  v1 at low T (0.82 @ T=0.1) but stays higher at T=0.7–0.9 (0.05–0.22 vs v1's
+  0.006) — v2 repeats *real learned phrases*, v1's near-zero was gibberish
+  novelty. Repetition is only meaningful once fluency exists.
+- **Scorecard** (`scorecard.json`, T=0.8): rep 0.00–0.05 on all six prompts.
+  Qualitative leap: real English, dates, structure, list formatting — no
+  invented words anywhere ("Dyrialoga"/"Marshire"/"Crowmed" gone). Facts remain
+  empty/confidently wrong (France→British colonies; cat→heart-attack advice).
+
+### Verdict
+
+Capacity step **worked for what it targeted**: the diagnosed failure was
+derailment into invented-word gibberish — gone. What remains (facts, T=0.8
+unseeded loops) is the **data limit**: 186M tokens / 48M params ≈ 3.9 tok/param
+vs ~20 Chinchilla. Confirmed the A/B/C prediction: A (more tokens) is the next
+step, not more capacity.
+
+### Fresh gotcha (stronger than the seeded-eval one)
+
+Seeded eval (sweep/scorecard, seed 42) shows rep ~0.01–0.05 on v2, but an
+unseeded manual chat **still produced a hard loop** ("The Lord and God... yea,
+yea, yea...") at T=0.8 → seeded metrics materially understate real-world
+derailment even at 48M. Repeat: always cross-check with an unseeded run before
+declaring generation health. Candidate fix (not yet implemented): a
+no-repeat-n-gram penalty in sampling + optionally raise the chat default T to
+~0.9.
+
+### Committed + pushed
+
+- (see git log for the AtlasBase-v2 reports + docs commit)
+
+### Next steps
+
+1. **A = more tokens**: multi-epoch on the existing AtlasBase corpus (cheapest,
+   no pipeline work) and/or the full FineWeb-Edu mixture per DATA_PIPELINE.md —
+   targets the factual-emptiness limit now that capacity is validated.
+2. **Quick UX win (independent of training)**: no-repeat-n-gram penalty in
+   `inference/sampling.py` + chat default T → ~0.9, to kill the unseeded loops
+   the manual chat exposed.
 3. Then SFT → AtlasLLM-Instruct.

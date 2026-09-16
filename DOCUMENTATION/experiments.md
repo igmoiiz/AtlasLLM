@@ -150,6 +150,7 @@ The overfit study is the first controlled (same-model, different-corpus) compari
 | `tinystories/run_20260912-192907/last.pt` | AtlasTiny | 22.9M | 5.80 | 5.93 @ 8k | +0.00 nats | exp(5.93) ≈ 380 |
 | `tinystories-overfit/run_20260912-194102/last.pt` | AtlasTiny slice (300k) | 300k | 0.25 | 13.80 @ 5k | +13.55 nats | exp(13.80) ≈ 0.99M |
 | `atlasbase/run_20260912-232905/last.pt` | AtlasBase-v1 (FineWeb-Edu) | 186M | 5.62 | 5.4174 @ 94k | +0.02 nats | exp(5.4174) ≈ 225 |
+| `atlasbase_v2/run_20260915-201403/best.pt` | AtlasBase-v2 (FineWeb-Edu) | 186M | 4.83 | 4.8282 @ 94.9k | +0.04 nats | exp(4.8282) ≈ 125 |
 
 The gap metric is measured by `scripts/evaluation.py`: held-out loss minus train
 loss on matching passages. WikiText-2 ran ~97 epochs and memorized (gap +3.8);
@@ -173,6 +174,23 @@ memorizes. Higher entropy than WikiText-103, so ppl 225 > the old 174 is not a
 regression; the Archive is a different, noisier web domain. Generation at 13M
 params is structurally fluent but not yet knowledgeable. Run split by one power
 cut at step 82k; resumed from best.pt via --resume with exact continuation.
+
+The last row is the AtlasBase-v2 capacity experiment (2026-09-13): a 48M model
+(D=512, L=10, d_ff=2048) trained on the *same* 186M-token AtlasBase corpus and
+16k tokenizer, so the only change vs AtlasBase-v1 is scale (13M -> 48M, a 3.7x
+capacity step, LR 3e-4 -> 2e-4). This was prompted by sampling-sweep + scorecard
+diagnostics (scripts/sampling_sweep.py, scripts/scorecard.py, reports/data/
+AtlasBase-v1/): repetition in the 13M base LM was a temperature artifact with no
+sweet spot - low T loops, high T drifts into invented words - so derailment was
+diagnosed as model capacity, not sampling. Result: val ppl 225 -> 125 (-44%),
+loss 5.4174 -> 4.8282. 95k steps survived five power cuts (last.pt/best.pt resume
+chain); the final cut at step 94 999 left both checkpoints intact. Generation is
+now fluent, structured, real-word prose (no invented-word gibberish) but remains
+factually empty/confidently wrong - consistent with the 186M tokens / 48M params
+(~3.9 tok/param) data limit, so the follow-on is more tokens (multi-epoch and/or
+the full FineWeb-Edu mixture), not further capacity. Seeded eval metrics
+understate real-world derailment: an unseeded manual chat still produced a hard
+repetition loop at T=0.8 while the seeded scorecard showed rep ~0.01-0.05.
 
 Measured with:
 

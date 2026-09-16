@@ -1,0 +1,44 @@
+{
+  "checkpoint": "D:\\WorkSpace\\LLMs\\AtlasLLM\\checkpoints\\atlasbase_v2\\run_20260915-201403\\best.pt",
+  "val_loss": 4.8282429945468905,
+  "val_perplexity": 124.9911574683499,
+  "test_loss": 4.840332181453705,
+  "test_perplexity": 126.51136948159409,
+  "memorization": {
+    "train_loss": 4.789662411212921,
+    "heldout_loss": 4.8282429945468905,
+    "gap": 0.03858058333396919
+  },
+  "generation": [
+    {
+      "prompt": "The capital of France is",
+      "text": "The capital of France is threatened by disarmament and unionist forces and forces into order that they would not be able to wage back the war crimes.\nThe U.S. had more military power than it became an attack by army and guilt a government and of many more military and military powers. On July 30, the United States of America in the United States, however, was more force than a military force on the borders of the war crimes. From that point, on April 4 the United States was able to sink at the expense of army, as is the case for some unions in the United States. He also said that the United States government would soon move back to power to the United States in the ",
+      "finished_reason": "max_len",
+      "tokens": 125
+    },
+    {
+      "prompt": "Once upon a time,",
+      "text": "Once upon a time, two of them have had fled to about one-third of a short period in the thirteenth day. Three tells us how to solve the problem, and will only get away with what happened to it now.Fibros, H. 1963\nBeginning in its unprecedented period between 1984, when John A. Martin had become an \u201cfraudal\u201d in the midst of 1978, after being an international leader, H. de Mohamed was called to be the only member of Thomas Luke, who would later put down his position and declared himself an American leader and a ",
+      "finished_reason": "max_len",
+      "tokens": 124
+    },
+    {
+      "prompt": "Artificial intelligence is",
+      "text": "Artificial intelligence is therefore an interactive threat of what one or both have evolved to come; that is, it is an instant being of any other things.\nThe concept of \u201cclassification means \u201cclassifications\u201d in humanity has never been a part of it.The term \u201cclassification in the word \u201cclassification\u201d is \u201cclassification\u201d in \u201cclassification\u201d in \u201cclassification for classification\u201d or classification. The word \u201cclassification and classification of the classification of the classification of the classification of the classification is \u201cclassification\u201d, or \u201cclassifications\u201d in \u201c",
+      "finished_reason": "max_len",
+      "tokens": 125
+    },
+    {
+      "prompt": "In 1969, humans first",
+      "text": "In 1969, humans first took over the next 3 months to return to an additional period from 1965 after 1976 by 1990 (1975).\nIn 1964 an estimated 40 million Americans in America were over 42 years old and over 39 years of age (1968). However, only 4 percent were born in Canada. However, in recent years, the number of individuals with unemployed people were about 7 percent, and 97 percent was over. The rate had already been around 80 percent, the percentage rate and overall.\nThe overall rate of immigration rate is about 85 percent. New research has shown that there are more than 120 million Americans ",
+      "finished_reason": "max_len",
+      "tokens": 125
+    },
+    {
+      "prompt": "The Earth orbits the Sun because",
+      "text": "The Earth orbits the Sun because; the other was Earth from the Sun and in the sun. The Earth is Earth from Earth and it is about 2 million years away. There is no reason to say that the Earth is about 10 billion years ago.\nThe Earth is about 13 million years old and about 15 million years ago. The sun is about 1 billion years old. The Earth is about 4 billion years old and about 20 billion years ago. The Earth\u2019s crust is about 6 billion years old. Taking this year on Earth\u2019s atmosphere, the Earth is about 2 billion years ago.\nThe sun rises and has seen a huge amount of light, the sun is about 2 billion years old and now. The sun is ",
+      "finished_reason": "max_len",
+      "tokens": 127
+    }
+  ]
+}

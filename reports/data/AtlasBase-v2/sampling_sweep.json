@@ -1,0 +1,241 @@
+{
+  "checkpoint": "D:\\WorkSpace\\LLMs\\AtlasLLM\\checkpoints\\atlasbase_v2\\run_20260915-201403\\best.pt",
+  "temperature": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9
+  ],
+  "top_p": [
+    0.8,
+    0.9,
+    0.95
+  ],
+  "cells": [
+    {
+      "temperature": 0.1,
+      "top_p": 0.8,
+      "mean_repetition": 0.8225,
+      "per_prompt_repetition": {
+        "0": 0.847,
+        "1": 0.907,
+        "2": 0.865,
+        "3": 0.877,
+        "4": 0.624,
+        "5": 0.814
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.1,
+      "top_p": 0.9,
+      "mean_repetition": 0.7999,
+      "per_prompt_repetition": {
+        "0": 0.797,
+        "1": 0.876,
+        "2": 0.865,
+        "3": 0.877,
+        "4": 0.562,
+        "5": 0.823
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.1,
+      "top_p": 0.95,
+      "mean_repetition": 0.7927,
+      "per_prompt_repetition": {
+        "0": 0.79,
+        "1": 0.876,
+        "2": 0.865,
+        "3": 0.877,
+        "4": 0.534,
+        "5": 0.814
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.3,
+      "top_p": 0.8,
+      "mean_repetition": 0.6545,
+      "per_prompt_repetition": {
+        "0": 0.737,
+        "1": 0.69,
+        "2": 0.627,
+        "3": 0.378,
+        "4": 0.737,
+        "5": 0.757
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.3,
+      "top_p": 0.9,
+      "mean_repetition": 0.6836,
+      "per_prompt_repetition": {
+        "0": 0.856,
+        "1": 0.705,
+        "2": 0.598,
+        "3": 0.405,
+        "4": 0.737,
+        "5": 0.8
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.3,
+      "top_p": 0.95,
+      "mean_repetition": 0.7103,
+      "per_prompt_repetition": {
+        "0": 0.856,
+        "1": 0.548,
+        "2": 0.598,
+        "3": 0.723,
+        "4": 0.737,
+        "5": 0.8
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.5,
+      "top_p": 0.8,
+      "mean_repetition": 0.4572,
+      "per_prompt_repetition": {
+        "0": 0.436,
+        "1": 0.772,
+        "2": 0.366,
+        "3": 0.464,
+        "4": 0.156,
+        "5": 0.549
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.5,
+      "top_p": 0.9,
+      "mean_repetition": 0.3425,
+      "per_prompt_repetition": {
+        "0": 0.115,
+        "1": 0.413,
+        "2": 0.486,
+        "3": 0.398,
+        "4": 0.093,
+        "5": 0.549
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.5,
+      "top_p": 0.95,
+      "mean_repetition": 0.3469,
+      "per_prompt_repetition": {
+        "0": 0.185,
+        "1": 0.745,
+        "2": 0.153,
+        "3": 0.505,
+        "4": 0.193,
+        "5": 0.301
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "mean_repetition": 0.1773,
+      "per_prompt_repetition": {
+        "0": 0.273,
+        "1": 0.261,
+        "2": 0.131,
+        "3": 0.321,
+        "4": 0.056,
+        "5": 0.022
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "mean_repetition": 0.2225,
+      "per_prompt_repetition": {
+        "0": 0.025,
+        "1": 0.25,
+        "2": 0.051,
+        "3": 0.883,
+        "4": 0.126,
+        "5": 0.0
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "mean_repetition": 0.0522,
+      "per_prompt_repetition": {
+        "0": 0.018,
+        "1": 0.026,
+        "2": 0.073,
+        "3": 0.02,
+        "4": 0.176,
+        "5": 0.0
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.9,
+      "top_p": 0.8,
+      "mean_repetition": 0.0483,
+      "per_prompt_repetition": {
+        "0": 0.012,
+        "1": 0.015,
+        "2": 0.019,
+        "3": 0.022,
+        "4": 0.0,
+        "5": 0.222
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.9,
+      "top_p": 0.9,
+      "mean_repetition": 0.0193,
+      "per_prompt_repetition": {
+        "0": 0.006,
+        "1": 0.0,
+        "2": 0.04,
+        "3": 0.005,
+        "4": 0.0,
+        "5": 0.064
+      },
+      "echo_accuracy": false
+    },
+    {
+      "temperature": 0.9,
+      "top_p": 0.95,
+      "mean_repetition": 0.0123,
+      "per_prompt_repetition": {
+        "0": 0.006,
+        "1": 0.034,
+        "2": 0.029,
+        "3": 0.005,
+        "4": 0.0,
+        "5": 0.0
+      },
+      "echo_accuracy": false
+    }
+  ],
+  "best": {
+    "temperature": 0.9,
+    "top_p": 0.95,
+    "mean_repetition": 0.0123,
+    "per_prompt_repetition": {
+      "0": 0.006,
+      "1": 0.034,
+      "2": 0.029,
+      "3": 0.005,
+      "4": 0.0,
+      "5": 0.0
+    },
+    "echo_accuracy": false
+  }
+}

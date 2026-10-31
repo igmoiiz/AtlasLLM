@@ -117,6 +117,20 @@ no-op with a clear message.
 **Checkpoint resumption:** `python -m training.train --config ... --resume <path>.pt`
 restores all state and continues from `step + 1` toward `max_steps`.
 
+**Recovery after an interruption** (power cut, Ctrl-C, overnight crash):
+
+```bash
+python -m training.train --config configs/atlasbase_v3.yaml --resume auto
+```
+
+`auto` scans `checkpoint.dir/run_*/` for `last.pt` / `best.pt`, newest first,
+and resumes from the newest file that actually deserializes. A checkpoint
+truncated mid-write is skipped, so recovery falls back to the previous good
+save instead of failing. If nothing is readable it raises rather than silently
+starting a fresh run; pass `--resume` explicitly or omit it to train from
+scratch. The resolved path is recorded in `reproducibility.json` as
+`resume_from`.
+
 ## Validation
 
 - Run every N steps (configurable)

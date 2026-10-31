@@ -1,12 +1,15 @@
 """Checkpoint save/load/resume tests."""
 
+import os
+
 import pytest
 import torch
 
 from model.atlas_llm import AtlasLLM
 from model.config import ModelConfig
-from training.checkpoint import load_checkpoint, save_checkpoint
+from training.checkpoint import load_checkpoint, newest_readable_checkpoint, save_checkpoint
 from training.scheduler import build_lr_scheduler
+from training.train import resolve_resume
 
 VOCAB, CTX = 256, 16
 
@@ -65,3 +68,64 @@ def test_load_missing_checkpoint_raises(tmp_path):
     model, opt, sched = _make_state(0)
     with pytest.raises(FileNotFoundError):
         load_checkpoint(tmp_path / "nope.pt", model=model, optimizer=opt, scheduler=sched)
+
+
+def _write_ckpt(path, step: int, mtime: float) -> None:
+    model, opt, sched = _make_state(step)
+    save_checkpoint(path, model=model, optimizer=opt, scheduler=sched, step=step, config={}, metrics={})
+    os.utime(path, (mtime, mtime))
+
+
+def test_newest_readable_checkpoint_skips_truncated_file(tmp_path):
+    run = tmp_path / "run_20260101-000000"
+    run.mkdir()
+    _write_ckpt(run / "best.pt", step=900, mtime=1_700_000_000)
+    last = run / "last.pt"
+    last.write_bytes((run / "best.pt").read_bytes()[:512])  # killed mid-write
+    os.utime(last, (1_700_000_001, 1_700_000_001))
+
+    assert newest_readable_checkpoint(tmp_path) == run / "best.pt"
+
+
+def test_newest_readable_checkpoint_prefers_newer_run(tmp_path):
+    old = tmp_path / "run_20260101-000000"
+    new = tmp_path / "run_20260102-000000"
+    old.mkdir()
+    new.mkdir()
+    _write_ckpt(old / "last.pt", step=100, mtime=1_700_000_000)
+    _write_ckpt(new / "last.pt", step=200, mtime=1_700_000_100)
+
+    assert newest_readable_checkpoint(tmp_path) == new / "last.pt"
+
+
+def test_newest_readable_checkpoint_empty_dir_returns_none(tmp_path):
+    assert newest_readable_checkpoint(tmp_path) is None
+
+
+def test_newest_readable_checkpoint_missing_dir_returns_none(tmp_path):
+    assert newest_readable_checkpoint(tmp_path / "absent") is None
+
+
+# ------------------------------------------------------ --resume resolution
+
+
+def test_resolve_resume_auto_uses_checkpoint_dir(tmp_path):
+    run = tmp_path / "run_20260101-000000"
+    run.mkdir()
+    _write_ckpt(run / "last.pt", step=300, mtime=1_700_000_000)
+
+    assert resolve_resume("auto", {"checkpoint": {"dir": str(tmp_path)}}) == run / "last.pt"
+
+
+def test_resolve_resume_none_starts_fresh():
+    assert resolve_resume(None, {"checkpoint": {"dir": "unused"}}) is None
+
+
+def test_resolve_resume_auto_without_readable_checkpoint_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        resolve_resume("auto", {"checkpoint": {"dir": str(tmp_path)}})
+
+
+def test_resolve_resume_explicit_missing_path_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        resolve_resume(str(tmp_path / "nope.pt"), {})

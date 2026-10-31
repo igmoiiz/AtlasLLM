@@ -4,6 +4,7 @@ Usage:
 
     python -m training.train --config configs/debug.yaml
     python -m training.train --config configs/debug.yaml --resume checkpoints/debug/run_20260101-000000/last.pt
+    python -m training.train --config configs/debug.yaml --resume auto   # newest readable checkpoint
     python -m training.train --config configs/small.yaml --steps 500   # override max_steps
 
 Loads a YAML config, builds the model and dataloaders, and runs the
@@ -25,6 +26,7 @@ import yaml
 from data_pipeline.dataset import TextDataset
 from model.atlas_llm import AtlasLLM
 from model.config import ModelConfig
+from training.checkpoint import newest_readable_checkpoint
 from training.trainer import Trainer
 
 
@@ -39,7 +41,7 @@ def resolve_dtype(name: str) -> torch.dtype:
     return {"float32": torch.float32, "bfloat16": torch.bfloat16, "float16": torch.float16}.get(name, torch.float32)
 
 
-def write_reproducibility(run_dir: Path, config: dict, device: torch.device, seed: int, datasets: dict) -> None:
+def write_reproducibility(run_dir: Path, config: dict, device: torch.device, seed: int, datasets: dict, resume_from: Path | None = None) -> None:
     """Record everything needed to reproduce a run (AGENTS.md rule 25)."""
     info = {
         "seed": seed,
@@ -47,6 +49,7 @@ def write_reproducibility(run_dir: Path, config: dict, device: torch.device, see
         "training": config["training"],
         "data": config["data"],
         "tokenizer_path": config["data"].get("tokenizer_path"),
+        "resume_from": str(resume_from) if resume_from is not None else None,
         "torch": torch.__version__,
         "cuda": torch.version.cuda,
         "python": platform.python_version(),
@@ -57,10 +60,35 @@ def write_reproducibility(run_dir: Path, config: dict, device: torch.device, see
     (run_dir / "reproducibility.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
 
 
+def resolve_resume(request: str | None, config: dict) -> Path | None:
+    """Turn ``--resume`` into a checkpoint path, or ``None`` to start fresh.
+
+    ``auto`` scans ``checkpoint.dir`` for the newest checkpoint that actually
+    loads, so an interrupted run (power cut, kill) continues instead of
+    restarting. A readable checkpoint is required for ``auto``; silently
+    starting over would discard hours of training.
+    """
+    if request is None:
+        return None
+    if request != "auto":
+        path = Path(request)
+        if not path.is_file():
+            raise FileNotFoundError(f"--resume checkpoint not found: {path}")
+        return path
+    root = config["checkpoint"].get("dir")
+    if not root:
+        raise KeyError("--resume auto needs checkpoint.dir in the config")
+    path = newest_readable_checkpoint(root)
+    if path is None:
+        raise FileNotFoundError(f"--resume auto found no readable checkpoint under {root}")
+    print(f"resuming from {path}")
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", required=True, help="Path to a configs/*.yaml file.")
-    parser.add_argument("--resume", default=None, help="Checkpoint .pt file to resume from.")
+    parser.add_argument("--resume", default=None, help="Checkpoint .pt to resume from, or 'auto' for the newest readable one.")
     parser.add_argument("--steps", type=int, default=None, help="Override training.max_steps.")
     args = parser.parse_args()
 
@@ -91,13 +119,16 @@ def main() -> None:
 
     if args.steps is not None:
         config["training"]["max_steps"] = args.steps
+
+    resume_from = resolve_resume(args.resume, config)
+
     run_dir = Path(config["checkpoint"]["dir"]) / f"run_{time.strftime('%Y%m%d-%H%M%S')}"
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "config.yaml").write_text(Path(args.config).read_text(encoding="utf-8"), encoding="utf-8")
-    write_reproducibility(run_dir, config, device, seed, datasets)
+    write_reproducibility(run_dir, config, device, seed, datasets, resume_from=resume_from)
 
     trainer = Trainer(model, config, train_loader, val_loader, device=device, seed=seed, run_dir=run_dir)
-    summary = trainer.train(resume_from=Path(args.resume) if args.resume else None)
+    summary = trainer.train(resume_from=resume_from)
 
     print(f"\nFinished {config['training']['max_steps']} steps")
     print(f"  train loss: {summary['train_loss_first']:.4f} -> {summary['train_loss_last']:.4f}")

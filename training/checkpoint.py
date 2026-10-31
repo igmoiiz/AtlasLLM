@@ -2,13 +2,22 @@
 
 A checkpoint bundles model, optimizer, and scheduler state with the exact
 training step, the run configuration, and current metrics. Save is atomic
-(write to ``.tmp`` then rename) so a crash cannot leave a truncated file.
+(write to ``.tmp`` then rename) so a crash cannot leave a truncated file. A
+power cut can still truncate a file that was already renamed into place, so
+:func:`newest_readable_checkpoint` exists to find the newest checkpoint that
+actually deserializes (``--resume auto``).
 """
 
+import pickle
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
 import torch
+
+# A truncated checkpoint fails in the deserializer rather than as a missing
+# file; these are the failure modes observed from interrupted writes.
+_READ_ERRORS = (RuntimeError, EOFError, OSError, pickle.UnpicklingError, zipfile.BadZipFile)
 
 
 @dataclass
@@ -71,3 +80,29 @@ def load_checkpoint(path: str | Path, *, model, optimizer, scheduler) -> Checkpo
         optimizer_state=payload["optimizer_state"],
         scheduler_state=payload["scheduler_state"],
     )
+
+
+def newest_readable_checkpoint(root: str | Path) -> Path | None:
+    """Newest ``run_*/{last,best}.pt`` under ``root`` that actually loads.
+
+    Recovery policy after an interruption: the newest checkpoint wins, and a
+    truncated file falls back to the next candidate (usually ``best.pt`` at
+    the same step, or the previous run's ``last.pt``). Returns ``None`` when
+    no candidate is readable, which means "start fresh".
+    """
+    root = Path(root)
+    if not root.is_dir():
+        return None
+    candidates = sorted(
+        (*root.glob("run_*/last.pt"), *root.glob("run_*/best.pt")),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for path in candidates:
+        try:
+            payload = torch.load(path, map_location="cpu", weights_only=True)
+        except _READ_ERRORS:
+            continue
+        if isinstance(payload, dict) and "model_state" in payload and "step" in payload:
+            return path
+    return None

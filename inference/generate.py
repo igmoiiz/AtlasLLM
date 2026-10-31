@@ -23,6 +23,10 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=50)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--seed", type=int, help="Seed for reproducible sampling")
+    parser.add_argument(
+        "--no-repeat-ngram-size", type=int, default=0,
+        help="Ban ids that would repeat an n-gram of this size (0 disables; chat defaults to 4)",
+    )
     parser.add_argument("--no-cache", action="store_true", help="Disable the KV cache (recompute the full prefix each step)")
     args = parser.parse_args()
 
@@ -42,6 +46,7 @@ def main() -> None:
         top_p=args.top_p,
         seed=args.seed,
         use_cache=not args.no_cache,
+        no_repeat_ngram_size=args.no_repeat_ngram_size,
     )
     print(output.text)
 

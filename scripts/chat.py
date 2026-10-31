@@ -21,6 +21,10 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=50)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--seed", type=int, help="Seed for reproducible sampling")
+    parser.add_argument(
+        "--no-repeat-ngram-size", type=int, default=4,
+        help="Ban ids that would repeat an n-gram of this size (default 4; 0 disables)",
+    )
     args = parser.parse_args()
 
     engine = InferenceEngine.from_checkpoint(args.checkpoint, config=args.config, tokenizer=None, device="auto")
@@ -44,6 +48,7 @@ def main() -> None:
             top_k=args.top_k,
             top_p=args.top_p,
             seed=args.seed,
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
         ):
             sys.stdout.write(chunk)
             sys.stdout.flush()

@@ -62,11 +62,15 @@ class InferenceEngine:
         eos: bool = True,
         stop_sequences: tuple[str, ...] = (),
         use_cache: bool = True,
+        no_repeat_ngram_size: int = 0,
     ) -> Generation:
         """Complete ``prompt`` into a :class:`Generation`."""
         input_ids = self._prepare(prompt, max_new_tokens)
         ids = input_ids[0].tolist()
-        for token in self._iter_tokens(input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos, stop_sequences, use_cache):
+        for token in self._iter_tokens(
+            input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos,
+            stop_sequences, use_cache, no_repeat_ngram_size,
+        ):
             ids.append(token)
         return Generation(text=self.tokenizer.decode(ids), token_ids=ids, finished_reason=self._finish_reason(ids, eos, stop_sequences))
 
@@ -81,12 +85,16 @@ class InferenceEngine:
         eos: bool = True,
         stop_sequences: tuple[str, ...] = (),
         use_cache: bool = True,
+        no_repeat_ngram_size: int = 0,
     ):
         """Same decoding loop, yielding one decoded text chunk per token."""
         input_ids = self._prepare(prompt, max_new_tokens)
         cumulative = input_ids[0].tolist()
         emitted = ""
-        for token in self._iter_tokens(input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos, stop_sequences, use_cache):
+        for token in self._iter_tokens(
+            input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos,
+            stop_sequences, use_cache, no_repeat_ngram_size,
+        ):
             cumulative.append(token)
             full = self.tokenizer.decode(cumulative)
             chunk = full[len(emitted):] if full.startswith(emitted) else full
@@ -173,7 +181,7 @@ class InferenceEngine:
             ids = ids[-keep:]
         return torch.tensor([ids], dtype=torch.long, device=self.device)
 
-    def _iter_tokens(self, input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos, stop_sequences, use_cache):
+    def _iter_tokens(self, input_ids, max_new_tokens, temperature, top_k, top_p, seed, eos, stop_sequences, use_cache, no_repeat_ngram_size=0):
         model, ctx, tok = self.model, self.model.config.context_length, self.tokenizer
         prefix_len = input_ids.size(1)
         budget = min(max_new_tokens, ctx - prefix_len)
@@ -182,8 +190,8 @@ class InferenceEngine:
         rng = torch.Generator(device=self.device).manual_seed(seed) if seed is not None else None
 
         # ``sequence`` grows into the full prompt + generated text (used for the
-        # next-token window and for stop-sequence decoding); ``cache`` holds the
-        # K/V of everything already processed.
+        # next-token window, the n-gram ban, and stop-sequence decoding);
+        # ``cache`` holds the K/V of everything already processed.
         sequence = input_ids
         cache = KVCache(model.config.n_layers) if use_cache else None
         pending = None
@@ -194,7 +202,10 @@ class InferenceEngine:
             # The prefill logits already predict the token right after the
             # prompt, so it is sampled here instead of re-feeding the last
             # prompt token (which would duplicate it in the cache).
-            pending = sample_next_token(logits[:, -1, :], temperature, top_k, top_p, rng)
+            pending = sample_next_token(
+                logits[:, -1, :], temperature, top_k, top_p, rng,
+                no_repeat_ngram_size=no_repeat_ngram_size, recent_ids=sequence,
+            )
 
         for _ in range(budget):
             with torch.no_grad():
@@ -204,10 +215,16 @@ class InferenceEngine:
                 elif use_cache:
                     logits, pairs = model(sequence[:, -1:], past_key_values=cache.pairs())
                     cache.update(pairs)
-                    next_token = sample_next_token(logits[:, -1, :], temperature, top_k, top_p, rng)
+                    next_token = sample_next_token(
+                        logits[:, -1, :], temperature, top_k, top_p, rng,
+                        no_repeat_ngram_size=no_repeat_ngram_size, recent_ids=sequence,
+                    )
                 else:
                     logits = model(sequence)
-                    next_token = sample_next_token(logits[:, -1, :], temperature, top_k, top_p, rng)
+                    next_token = sample_next_token(
+                        logits[:, -1, :], temperature, top_k, top_p, rng,
+                        no_repeat_ngram_size=no_repeat_ngram_size, recent_ids=sequence,
+                    )
             sequence = torch.cat((sequence, next_token.unsqueeze(0)), dim=-1)
             decoded = tok.decode(sequence[0].tolist())
             if eos and next_token.item() == tok.eos_id:

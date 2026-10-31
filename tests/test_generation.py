@@ -82,6 +82,124 @@ def test_batched_sampling_returns_one_index_per_row():
     assert tok.shape == (3,)
 
 
+# ------------------------------------------------- no-repeat-ngram ban
+
+
+def test_no_repeat_ngram_bans_the_repeating_token():
+    # history ends with (1, 2, 3) and also starts with it, so token 4 would
+    # complete a repeated 4-gram. It must never be drawn.
+    history = [1, 2, 3, 4, 1, 2, 3]
+    logits = torch.full((1, 8), -100.0)
+    logits[0, 4] = 10.0
+    rng = torch.Generator().manual_seed(0)
+    for _ in range(25):
+        tok = sample_next_token(logits, temperature=0.8, no_repeat_ngram_size=4, recent_ids=history, rng=rng)
+        assert tok.item() != 4
+
+
+def test_no_repeat_ngram_never_empties_the_distribution():
+    # n=1 with the whole vocabulary in history bans every id; the fallback must
+    # keep the distribution legal instead of producing NaN. top_k=1 makes the
+    # fallback observable: the unmodified scores' argmax (id 0) survives.
+    history = list(range(10))
+    logits = torch.zeros(1, 10)
+    logits[0, 0] = 10.0
+    rng = torch.Generator().manual_seed(0)
+    tok = sample_next_token(
+        logits, temperature=1.0, top_k=1, no_repeat_ngram_size=1, recent_ids=history, rng=rng
+    )
+    assert tok.item() == 0
+    assert not torch.isnan(logits).any()
+
+
+def test_no_repeat_ngram_requires_history():
+    logits = torch.zeros(1, 8)
+    try:
+        sample_next_token(logits, temperature=1.0, no_repeat_ngram_size=4)
+    except ValueError:
+        return
+    raise AssertionError("a ban without recent_ids must raise ValueError")
+
+
+def test_no_repeat_ngram_rejects_negative_size():
+    logits = torch.zeros(1, 8)
+    try:
+        sample_next_token(logits, temperature=1.0, no_repeat_ngram_size=-1, recent_ids=[1, 2])
+    except ValueError:
+        return
+    raise AssertionError("negative no_repeat_ngram_size must raise ValueError")
+
+
+def test_greedy_bypasses_the_ban_by_design():
+    logits = torch.full((1, 8), -100.0)
+    logits[0, 4] = 10.0
+    tok = sample_next_token(logits, temperature=0.0, no_repeat_ngram_size=4, recent_ids=[1, 2, 3, 4, 1, 2, 3])
+    assert tok.item() == 4
+
+
+def test_no_repeat_ngram_composes_with_top_k_and_top_p():
+    history = [1, 2, 3, 4, 1, 2, 3]
+    logits = torch.randn(1, 64)
+    logits[0, 4] = 20.0
+    rng = torch.Generator().manual_seed(3)
+    for _ in range(30):
+        tok = sample_next_token(
+            logits, temperature=0.8, top_k=5, top_p=0.9,
+            no_repeat_ngram_size=4, recent_ids=history, rng=rng,
+        )
+        assert tok.item() != 4
+        assert not torch.isnan(tok.float()).any()
+
+
+def test_no_repeat_ngram_accepts_one_history_per_row():
+    logits = torch.zeros(2, 16)
+    rows = [[1, 2, 3, 1, 2, 3], [4, 5, 6, 4, 5, 6]]
+    tok = sample_next_token(logits, temperature=1.0, no_repeat_ngram_size=4, recent_ids=rows)
+    assert tok.shape == (2,)
+
+
+def test_no_repeat_ngram_rejects_mismatched_row_count():
+    logits = torch.zeros(3, 16)
+    try:
+        sample_next_token(logits, temperature=1.0, no_repeat_ngram_size=4, recent_ids=[[1, 2, 3, 4], [5, 6, 7, 8]])
+    except ValueError:
+        return
+    raise AssertionError("row-count mismatch must raise ValueError")
+
+
+class _ConstantModel(torch.nn.Module):
+    """Emits all mass on one id, so only the ban can stop it looping."""
+
+    def __init__(self, vocab_size: int, favourite: int = 7):
+        super().__init__()
+        self.config = ModelConfig(
+            vocab_size=vocab_size, context_length=32, d_model=8, n_layers=1, n_heads=1, d_ff=8
+        )
+        self.favourite = favourite
+        self.dummy = torch.nn.Parameter(torch.zeros(1))
+
+    def forward(self, input_ids, past_key_values=None):
+        logits = torch.zeros(input_ids.shape[0], input_ids.shape[1], self.config.vocab_size)
+        logits[..., self.favourite] = 20.0
+        return logits
+
+
+def test_engine_generation_without_ban_loops():
+    eng = InferenceEngine(_ConstantModel(make_tokenizer().vocab_size), make_tokenizer(), DEVICE)
+    out = eng.generate("hello there", max_new_tokens=12, temperature=0.8, use_cache=False)
+    grams = [tuple(out.token_ids[i:i + 4]) for i in range(len(out.token_ids) - 3)]
+    assert len(grams) != len(set(grams))
+
+
+def test_engine_generation_with_ban_has_no_repeated_ngram():
+    eng = InferenceEngine(_ConstantModel(make_tokenizer().vocab_size), make_tokenizer(), DEVICE)
+    out = eng.generate(
+        "hello there", max_new_tokens=24, temperature=0.8, use_cache=False, no_repeat_ngram_size=4
+    )
+    grams = [tuple(out.token_ids[i:i + 4]) for i in range(len(out.token_ids) - 3)]
+    assert len(grams) == len(set(grams))
+
+
 # ---------------------------------------------------------------- kv cache
 
 

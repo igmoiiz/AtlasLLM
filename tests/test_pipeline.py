@@ -407,7 +407,7 @@ def test_standalone_finalize_rebuilds_manifest(tmp_path: Path) -> None:
     initial = pipeline.stage_finalize(config, ctx)  # full ctx path
 
     # A standalone finalize starts from an empty ctx.
-    fresh = pipeline.stage_finalize(config, {})
+    pipeline.stage_finalize(config, {})
     processed = Path(config["data"]["train_path"]).parent
     manifest = json.loads((processed / "manifest.json").read_text(encoding="utf-8"))
     for split in ("train", "val", "test"):

@@ -9,7 +9,7 @@ Training teaches the model by example. For every token in the training text, the
 Key ideas:
 
 - **Loss** - one number that says how bad today's predictions were. It starts near a floor (for a 16k vocabulary, uniform guessing gives loss about 9.68) and drops as the model learns.
-- **Learning rate** - how large each correction step is. The run warms up slowly, then decays on a cosine curve, so early steps don't overshoot and later steps settle cleanly.
+- **Learning rate** - how large each correction step is. The run warms up slowly, then holds or decays (cosine or WSD schedule), so early steps don't overshoot and later steps settle cleanly.
 - **Checkpointing** - a snapshot of the model, optimizer, and schedule so training can be paused, resumed, or interrupted without losing work. The trainer writes atomic checkpoints (write to `.tmp`, then rename) so a crash cannot corrupt them.
 - **Validation** - periodically measuring loss on text the model never trained on. If training loss drops but validation loss rises, the model is memorizing instead of learning.
 
@@ -30,7 +30,7 @@ Training Loop:
      ├── Backward pass (gradients)
      ├── Gradient clipping
      ├── Optimizer step (AdamW)
-     ├── Scheduler step (warmup + cosine decay)
+     ├── Scheduler step (warmup + cosine/wsd decay)
      └── Logging + Checkpointing
      ↓
 Validation
@@ -72,18 +72,36 @@ L = -log(P(x_{t+1} | x_1, ..., x_t))
 
 ## Learning Rate Schedule
 
+Two schedules are available via `training.schedule`; both start with the same
+linear warmup and both end at zero.
+
+**`cosine` (default)**
+
 ```
 Step 0          → warmup_steps      → linear warmup from 0 to max_lr
 warmup_steps   → max_steps         → cosine decay from max_lr to ~0
+
+lr = max_lr * 0.5 * (1 + cos(π * progress))
 ```
 
-The cosine schedule decays the learning rate following:
+**`wsd`** (warmup-stable-decay, used by AtlasBase-v3)
 
 ```
-lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(π * progress))
+Step 0                 → warmup_steps   → linear warmup from 0 to max_lr
+warmup_steps          → decay_start    → flat at max_lr
+decay_start           → max_steps      → cosine decay from max_lr to ~0
+
+decay_start = max_steps * (1 - training.decay_frac)   # default decay_frac = 0.1
 ```
 
-where `progress` goes from 0 to 1 over the decay phase.
+`progress` goes from 0 to 1 over the decay phase in both cases.
+
+Why WSD: the plateau holds the LR at `max_lr` for 90% of the run, so a
+checkpoint taken mid-run can be extended (more tokens, more data) and still
+receive a full anneal at the end. Under cosine, extending a finished run means
+restarting from an LR that already decayed to zero — a much worse starting
+point. The tail is what actually buys the final loss, which is why
+`decay_frac` stays small.
 
 ## Gradient Management
 

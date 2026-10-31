@@ -60,6 +60,8 @@ class Trainer:
             self.optimizer,
             warmup_steps=int(training.get("warmup_steps", 0)),
             max_steps=self.max_steps,
+            schedule=str(training.get("schedule", "cosine")),
+            decay_frac=float(training.get("decay_frac", 0.1)),
         )
         self.train_loader = train_loader
         self.val_loader = val_loader

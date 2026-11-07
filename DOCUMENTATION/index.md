@@ -13,7 +13,7 @@ A language model is a program that learns to predict the next word of a text. Th
 3. **Model.** A Transformer: a neural network that reads token history and guesses the next token. See [architecture.md](architecture.md).
 4. **Training.** Repeatedly showing the model real text, measuring how wrong its guesses are, and adjusting its internal numbers to make future guesses better. See [training.md](training.md).
 5. **Inference.** Using the trained model to finish a prompt, one token at a time. See [inference.md](inference.md).
-6. **The rest.** Measuring quality, adding guards, and comparing variants are planned stages. See [experiments.md](experiments.md), [safety.md](safety.md), and [harness.md](harness.md).
+6. **Measurement.** Fixed probe suites score every checkpoint and a gate catches regressions. See [harness.md](harness.md) and [experiments.md](experiments.md). Guardrails are the remaining planned stage: [safety.md](safety.md).
 
 Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardware.md).
 
@@ -30,7 +30,7 @@ Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardw
 | [hardware.md](hardware.md) | Memory budget, device strategy, speed | Active |
 | [experiments.md](experiments.md) | Configuration-driven experiment design | Planned |
 | [safety.md](safety.md) | Guardrail architecture design | Planned |
-| [harness.md](harness.md) | Automated scenario-testing design | Planned |
+| [harness.md](harness.md) | Probe suites, scoring, regression gate | Active |
 
 ## Project status
 
@@ -49,13 +49,13 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | 5 | Debug training and tiny-overfit verification | Done |
 | 6 | Real pretraining (small config on GPU) | In progress - one 100k-step run, interrupted and resumed at 13k then 20k steps |
 | 7 | Inference engine (sampling, KV cache, streaming) | Done, tested |
-| 8 | Evaluation suite | Planned |
+| 8 | Evaluation suite (perplexity, memorization, probes) | Done, tested |
 | 9 | Instruction tuning | Planned |
 | 10 | Safety guardrails | Planned |
-| 11 | Automated harness | Planned |
+| 11 | Automated harness (probe suites, scoring, gate) | Done, tested, measured |
 | 12 | Release (v1.0) | Planned |
 
-**Quality gates currently passing:** 84 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
+**Quality gates currently passing:** 167 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
 
 For the measured numbers behind the "Done" claims, see [hardware.md](hardware.md) and [training.md](training.md).
 
@@ -94,7 +94,7 @@ AtlasLLM/
 ├── inference/          # Generation engine
 ├── evaluation/         # Planned: perplexity and benchmarks
 ├── safety/             # Planned: guardrails (external to model)
-├── harness/            # Planned: automated testing
+├── harness/            # Probe suites, scoring, regression gate
 ├── monitoring/         # Planned: metrics and profiling
 ├── configs/            # YAML experiment configurations
 ├── scripts/            # CLI utilities

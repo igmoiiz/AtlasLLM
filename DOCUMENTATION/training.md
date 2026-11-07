@@ -99,8 +99,8 @@ decay_start = max_steps * (1 - training.decay_frac)   # default decay_frac = 0.1
 Why WSD: the plateau holds the LR at `max_lr` for 90% of the run, so a
 checkpoint taken mid-run can be extended (more tokens, more data) and still
 receive a full anneal at the end. Under cosine, extending a finished run means
-restarting from an LR that already decayed to zero — a much worse starting
-point. The tail is what actually buys the final loss, which is why
+restarting from an LR that already decayed to zero, which is a much worse
+starting point. The tail is what actually buys the final loss, which is why
 `decay_frac` stays small.
 
 ## Gradient Management

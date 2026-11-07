@@ -1,0 +1,273 @@
+{
+  "checkpoint": "checkpoints\\atlasbase_v2\\run_20260915-201403\\best.pt",
+  "suite": "adversarial",
+  "decoding": {
+    "temperature": "per-probe",
+    "top_k": 50,
+    "top_p": 0.95,
+    "seed": 42,
+    "no_repeat_ngram_size": 0,
+    "max_tokens": "per-probe"
+  },
+  "summary": {
+    "n_probes": 10,
+    "mean_repetition": 0.07177088785778798,
+    "mean_prompt_echo": 0.042808052349487966,
+    "mean_on_topic": 0.39210317460317456,
+    "checkable": 0,
+    "passed": 0,
+    "pass_rate": null,
+    "by_category": {
+      "adversarial": {
+        "total": 10,
+        "checkable": 0,
+        "passed": 0,
+        "pass_rate": null,
+        "mean_repetition": 0.07177088785778798
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "adv_france",
+      "category": "adversarial",
+      "prompt": "The capital of France is",
+      "text": " taken by the British and British colonies in England (1516\u2013173). The British were very much in Europe (176\u2013134). Many of the major French colonies were established around the world, including the colonies (1831, 176\u20131837).\nIn 1538 the British colonies, which became known as the British colonies (1740\u20131783), the British colonies was established as British colonies. The British colonies were formed to an independent, independent colonies (1910\u20131912) and it became united for the colonies. Thirteen new colonies were created in the British Isles and was founded in 1845. The British colonies were founded by Larry de la G\u00e9rique de Pierre de L\u00e9rique, Inner de L\u00e9rique, Inner de L\u00e9rique, Inner de L\u00e9rique, T\u00e9rique, Inner de L\u00e9rique, Tran\u00e7e, and Eduardo de L\u00e9ri",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3481.8,
+      "repetition": 0.05217391304347826,
+      "prompt_echo": 0.03225806451612903,
+      "on_topic": 0.4,
+      "passed": null
+    },
+    {
+      "id": "adv_story",
+      "category": "adversarial",
+      "prompt": "Once upon a time, in a land far away,",
+      "text": " take it with you and your heart with you to feel your heart in dinner and you feel that you are not going to be your heart being.\nWe have a good quality of life, but we want to learn how to get more energy.\nOur goal is to make our way from your heart is going to be good for you. Something that all you will be working in good health because we do know how to work for our health and our health. We must also work for our time, your body is for good health, and we want to work together.\nWhen we first start to work with the heart of the heart we work for them, we work hard.\nWe're working to help us learn and develop a lot that is best for us to get our heart work well and learn how to get started. We will always get you done before to start the new heart attack. We will have trouble doing it. You must feel happy to do our hearts.\nYes, we will work with a healthy heart attack and exercise program to learn about how those heart disease progresses. We will learn about our heart\u2019s health",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3248.5,
+      "repetition": 0.005,
+      "prompt_echo": 0.03571428571428571,
+      "on_topic": 0.375,
+      "passed": null
+    },
+    {
+      "id": "adv_ai",
+      "category": "adversarial",
+      "prompt": "Artificial intelligence is",
+      "text": " taken by the American Museum of Natural History and in the mid-1930s, when it was redesigned and an operative and highly successful operator, the BBC and Swiss Institute of Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Bynecological Artificial Artificial Artificial Artificial Bynecological Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Artificial Collaborative Artificial artificial Artificial Art and Swiss Perception Musculosial Artificial Artificial Musculosial artificial Artificial artificial artificial Artificial Artificial Exposition, Artific",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3191.3,
+      "repetition": 0.345679012345679,
+      "prompt_echo": 0.03125,
+      "on_topic": 0.3333333333333333,
+      "passed": null
+    },
+    {
+      "id": "adv_1969",
+      "category": "adversarial",
+      "prompt": "In 1969, humans first",
+      "text": " took over the past three decades. Nearly 1000,000 people were killed. Most of them were killed there. Viking these two people were killed, and they had never seen before.\nIn 1998, Ford's government launched more than 1,750 people from Ford's National Institute of Technology in New York City. In 1992, Ford's law passed a report from Ford's National Academy website. At a report by Ford's National Institute of Technology in San Diego and Ford's Department of Energy and Engineering, a report from MIT, said there may be other concerns.\nThe Ford's law was granted $1.3 million in fiscal years' revenue by Ford's Environmental Protection Agency (IEP) is part of the Ford's Instrumented Air Force and the Ford's Environmental Research Office.\nThe ford of the Ford's Commission on Ford's National Geoscience Council was forming a new program to help Ford's efforts, and Ford's National Science Foundation (",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3223.7,
+      "repetition": 0.02112676056338028,
+      "prompt_echo": 0.01098901098901099,
+      "on_topic": 0.25,
+      "passed": null
+    },
+    {
+      "id": "adv_orbit",
+      "category": "adversarial",
+      "prompt": "The Earth orbits the Sun because",
+      "text": ", there are four stars in our solar system, which are very similar to Earth.\nThe Earth\u2019s Earth is about 100,000 miles (10 meters) per year. The planets will have a relatively small scale for about 50 million. The planet is about 51 million miles (1.2 million miles) from Earth to Earth. In all its orbit, Earth\u2019s atmosphere will be about 100 million kilometers (approximately $2 million miles) per year. The Earth is about 3 million kilometers (approximately $7 million and $750 million each), but the Earth is about 40 million kilometers (over 300 kilometers) away. It is about 1 million miles ($60 million and $10 million each) for nearly 100 million miles ($1 billion each) of total solar energy in the planet and of Earth.\nThe planet\u2019s energy is about 2.5 billion kilometers (12,000 miles) from the Earth\u2019s atmosphere and in the Earth\u2019s atmosphere, said Steve Pinkie, a former AOBI.\nThe planet has a growing number of important planets: Earth, Earth, ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3163.2,
+      "repetition": 0.0,
+      "prompt_echo": 0.02702702702702703,
+      "on_topic": 0.4,
+      "passed": null
+    },
+    {
+      "id": "adv_engine",
+      "category": "adversarial",
+      "prompt": "Explain, step by step, how an internal combustion engine works.",
+      "text": "Fire Oil Dogs\nCleaner Nelson has worked to build a model for combustion engines. Nelson has been headed by several scientists at the GPU Research Center in Fire Awarenium, and has worked with his graduate students and engineers for the BBC Center.\nThe Eye Institute was located on 30 June 2010 in Lancet City, but his work is on the site at UCSR.\nThe National Science Foundation\u2019s Fire Oil Dogs Research Centre\u2019s School of Public Health has funded new research projects including Top Top Top Top Top Top Top Top Tips to help support our health of both sides of the world.\nThe project is funded by the National Science Foundation\u2019s National Science Foundation\u2019s Science Foundation, an internationally funded collaboration grant. It currently has been launched in collaboration with PC Merck Awarenberg National Institutes of Health, Department of Agriculture, Department of Education, Office of ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3211.9,
+      "repetition": 0.02857142857142857,
+      "prompt_echo": 0.03529411764705882,
+      "on_topic": 0.3333333333333333,
+      "passed": null
+    },
+    {
+      "id": "adv_mars",
+      "category": "adversarial",
+      "prompt": "List ten things you know about the planet Mars.",
+      "text": "Fire Live Stories\nThe Earth is about 2.5 times larger than those Earth Moon. The Earth has been nearly as high as 10 times the Earth is about 1.7 times the Earth\u2019s surface and was so big that it is almost entirely difficult to see. The Earth\u2019s surface covering has almost 1 million miles to about 1.5 billion miles. That is the temperature of about 0.4 times greater than the Earth\u2019s surface.\nThe Earth is about 2.5 billion miles from Earth, about 4 billion kilometers long to about 1.8 billion years ago, according to the report.\nThis month from BBC News.\nThe Earth is about 2.5 billion kilometers per hour, according to a new study from the National Institutes of Health, said.Fire flour, water in the ocean is mostly one of the best ways to sustain natural and environmental risks for wildlife and environments. It has some natural ecosystems that make that a unique part of an environment is a huge problem for wildlife conservation and management of wildlife. The current research has shown that all of these important environmental benefits are being developed as a ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3238.3,
+      "repetition": 0.027472527472527472,
+      "prompt_echo": 0.019801980198019802,
+      "on_topic": 0.2222222222222222,
+      "passed": null
+    },
+    {
+      "id": "adv_king",
+      "category": "adversarial",
+      "prompt": "The king sat on his throne and",
+      "text": " to the next generation.\nThe king sat on three of the sons, dubbed the man in his hand.\nIt is almost impossible to deny that the king sat on them the king sat on them, and he sat on one side the king sat on them on the other, he sat on them on one side.\nIn the same way, the king sat one time is said to have his name on another side.\nThe king sat on one side by on one side the king sat one time sat onboard in a backboard and onboard in a row.\nThe king sat on one side by onboard and one side by onboard with one side.\nThe king sat onboard or one side is on the other.\nThe king sat on one side with one side of another and one side is on one side.\nThe king sat onboard with one side. The king sat on one side of one side and one side by one side of one side, and a sidewalk.\nThe king s",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3190.4,
+      "repetition": 0.19298245614035087,
+      "prompt_echo": 0.13953488372093023,
+      "on_topic": 0.8571428571428571,
+      "passed": null
+    },
+    {
+      "id": "adv_coin",
+      "category": "adversarial",
+      "prompt": "If you flip a coin, the probability of heads is",
+      "text": " too far in space.\nBack in the mid-1990s, Back in the 1990s, Back in the 1995 US has set a \u201cnew one\u201d of heads of heads around the world.\nBack in the 1970s Back in the 1980s, the Cold War of Events, began establishing new leaders in New York City. In 1975 Back in the 1990s, Back in 1983, Back and Back were still at the start of the United States in 2000.\nBack in the 1960s, Back is a self-guiding approach. He has built a GPL with a future video of Twitter in New York City, which has been a partner with the Back and Back Kippur program. It will cover a range of online courses, including digital libraries, talent or librarians (including librarians). The next generation is now a collaborative effort in Back and Back in 2008.\nBack in the 1980s, Back was awarded an $900 million for Back in 1989 ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3239.2,
+      "repetition": 0.026845637583892617,
+      "prompt_echo": 0.06172839506172839,
+      "on_topic": 0.5,
+      "passed": null
+    },
+    {
+      "id": "adv_echo",
+      "category": "adversarial",
+      "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+      "text": "'\nSometimes you say \"I don't know\" your words or phones. So what does that mean? Should you like to say to you?\nWhat do I like for this? Here are some books that are so smart as you're in an adult and are so small that people will have to get so high.\nSo, let's get out a little more time and more about the same word?\nWhat is a word I mean by chance, but your word is different from my own words?\nBy this time I don't understand what she wants for?\nSo, how did you know if I loved me while I had seen my friends? Well, it's not uncomfortable and I don't want to know what?\nHow are you happen to my family?\nAnd if I started to get my first word, then I can't tell you about my word?\nSo I did I didn't know that my word is a whole word but it was not an adjective or adjective or adjective or adjective or adject",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3254.1,
+      "repetition": 0.017857142857142856,
+      "prompt_echo": 0.034482758620689655,
+      "on_topic": 0.25,
+      "passed": null
+    }
+  ],
+  "stress": {
+    "threshold": 0.1,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "n_prompts": 10,
+    "loops": 8,
+    "worst_repetition": 0.8958333333333334,
+    "mean_repetition": 0.07280996024857145,
+    "per_prompt": [
+      {
+        "id": "adv_france",
+        "prompt": "The capital of France is",
+        "mean_repetition": 0.014724470857764405,
+        "worst_repetition": 0.06722689075630252,
+        "worst_seed": 2,
+        "looped": false
+      },
+      {
+        "id": "adv_story",
+        "prompt": "Once upon a time, in a land far away,",
+        "mean_repetition": 0.03082842557632163,
+        "worst_repetition": 0.2,
+        "worst_seed": 6,
+        "looped": true
+      },
+      {
+        "id": "adv_ai",
+        "prompt": "Artificial intelligence is",
+        "mean_repetition": 0.017073380040867985,
+        "worst_repetition": 0.10975609756097561,
+        "worst_seed": 3,
+        "looped": true
+      },
+      {
+        "id": "adv_1969",
+        "prompt": "In 1969, humans first",
+        "mean_repetition": 0.05948568463923638,
+        "worst_repetition": 0.4084507042253521,
+        "worst_seed": 9,
+        "looped": true
+      },
+      {
+        "id": "adv_orbit",
+        "prompt": "The Earth orbits the Sun because",
+        "mean_repetition": 0.013448193657951127,
+        "worst_repetition": 0.049723756906077346,
+        "worst_seed": 1,
+        "looped": false
+      },
+      {
+        "id": "adv_engine",
+        "prompt": "Explain, step by step, how an internal combustion engine works.",
+        "mean_repetition": 0.09457609894362323,
+        "worst_repetition": 0.5,
+        "worst_seed": 1,
+        "looped": true
+      },
+      {
+        "id": "adv_mars",
+        "prompt": "List ten things you know about the planet Mars.",
+        "mean_repetition": 0.17402734915047624,
+        "worst_repetition": 0.8958333333333334,
+        "worst_seed": 5,
+        "looped": true
+      },
+      {
+        "id": "adv_king",
+        "prompt": "The king sat on his throne and",
+        "mean_repetition": 0.05804531756826566,
+        "worst_repetition": 0.22666666666666666,
+        "worst_seed": 7,
+        "looped": true
+      },
+      {
+        "id": "adv_coin",
+        "prompt": "If you flip a coin, the probability of heads is",
+        "mean_repetition": 0.1839683879092389,
+        "worst_repetition": 0.8311688311688312,
+        "worst_seed": 3,
+        "looped": true
+      },
+      {
+        "id": "adv_echo",
+        "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+        "mean_repetition": 0.08192229414196897,
+        "worst_repetition": 0.410958904109589,
+        "worst_seed": 7,
+        "looped": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,273 @@
+{
+  "checkpoint": "checkpoints\\atlasbase_v2\\run_20260915-201403\\best.pt",
+  "suite": "adversarial",
+  "decoding": {
+    "temperature": "per-probe",
+    "top_k": 50,
+    "top_p": 0.95,
+    "seed": 42,
+    "no_repeat_ngram_size": 4,
+    "max_tokens": "per-probe"
+  },
+  "summary": {
+    "n_probes": 10,
+    "mean_repetition": 0.005995254530394495,
+    "mean_prompt_echo": 0.039361996001405095,
+    "mean_on_topic": 0.4526587301587302,
+    "checkable": 0,
+    "passed": 0,
+    "pass_rate": null,
+    "by_category": {
+      "adversarial": {
+        "total": 10,
+        "checkable": 0,
+        "passed": 0,
+        "pass_rate": null,
+        "mean_repetition": 0.005995254530394495
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "adv_france",
+      "category": "adversarial",
+      "prompt": "The capital of France is",
+      "text": " taken by the British and British colonies in England (1516\u2013173). The British were very much in Europe (176\u2013134). Many of the major French colonies were established around the world, including the colonies (1831, 176\u20131837).\nIn 1538 the British colonies, which became known as the British colonies (1740\u20131783), the British colonies was established as British colonies. The British colonies were formed to an independent, independent colonies (1910\u20131912) and it became united for the colonies. Thirteen new colonies were created in the British Isles and was founded in 1845. The British colonies in 1775 became colonies (185\u20131832). There was no British colonies during the 1880s.\nThe British colonies of Europe was formed from 1731\u20131812, and the British colonies had become part of the British colony. It has been well known that British colonies have survived the British colonies to colonize the towns of the colonies. These colonies, together with British ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3911.8,
+      "repetition": 0.0,
+      "prompt_echo": 0.02702702702702703,
+      "on_topic": 0.4,
+      "passed": null
+    },
+    {
+      "id": "adv_story",
+      "category": "adversarial",
+      "prompt": "Once upon a time, in a land far away,",
+      "text": " take it with you and your heart with you to feel your heart in dinner and you feel that you are not going to be your heart being.\nWe have a good quality of life, but we want to learn how to get more energy.\nOur goal is to make our way from your heart is going to be good for you. Something that all you will be working in good health because we do know how to work for our health and our health. We must also work for our time, your body is for good health, and we want to work together.\nWhen we first start to work with the heart of the heart we work for them, we work hard.\nWe're working to help us learn and develop a lot that is best for us to get our heart work well and learn how to get started. We will always get you done before to start the new heart attack. We will have trouble doing it. You must feel happy to do our hearts.\nYes, we will work with a healthy heart attack and exercise program to learn about how those heart disease progresses. We will learn about our heart\u2019s health",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3482.1,
+      "repetition": 0.005,
+      "prompt_echo": 0.03571428571428571,
+      "on_topic": 0.375,
+      "passed": null
+    },
+    {
+      "id": "adv_ai",
+      "category": "adversarial",
+      "prompt": "Artificial intelligence is",
+      "text": " taken by the American Museum of Natural History and in the mid-1930s, when it was redesigned and an operative and highly successful operator, the BBC and Swiss Institute of Artificial Artificial Science and Technology (ACC) have built a design for the study of science, and has proven to be used for the use of scientific and scientific methods for science.\nThe most recent research has been the study of the Cold Wars and its work on the development of scientific research.\n\"In the end, the Cold Wars Fair Project is currently being developed by scientists with the aim of achieving new approaches,\" said Hartford, who is the founder of the Cold Wars, who is the lead author of the report, \"and will work the sciences now in the fields of science,\" said Hartfin.\nThe Cold Wars of Cold War in 1945 has been a valuable exhibition for the American Artificial Institute that has been in shape: \"To understand and identify them of the field for science,\" said lead author Steve Bach, professor of chemistry and engineering at the M",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3573.3,
+      "repetition": 0.0,
+      "prompt_echo": 0.02127659574468085,
+      "on_topic": 0.6666666666666666,
+      "passed": null
+    },
+    {
+      "id": "adv_1969",
+      "category": "adversarial",
+      "prompt": "In 1969, humans first",
+      "text": " took over the past three decades. Nearly 1000,000 people were killed. Most of them were killed there. Viking these two people were killed, and they had never seen before.\nIn 1998, Ford's government launched more than 1,750 people from Ford's National Institute of Technology in New York City. In 1992, Ford's law passed a report from Ford, the National Institute of Standards and Technology (NIH). Geneva, an international organization based in WFB, held a meeting of The American Foundation and a government agency, the National Research Council and the National Standards for Science for Science (CIH), and the National Research Council for Science (NIH) and National Institute of Technology (NIH). Activities for Science (NAIH) was established in 1999 after several years before its inception was signed. The NI was first signed by the Ford's Office of Science (ANH). It was taken in 1998, when Ford's successors were founded in 199",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3518.8,
+      "repetition": 0.0136986301369863,
+      "prompt_echo": 0.022988505747126436,
+      "on_topic": 0.5,
+      "passed": null
+    },
+    {
+      "id": "adv_orbit",
+      "category": "adversarial",
+      "prompt": "The Earth orbits the Sun because",
+      "text": ", there are four stars in our solar system, which are very similar to Earth.\nThe Earth\u2019s Earth is about 100,000 miles (10 meters) per year. The planets will have a relatively small scale for about 50 million. The planet is about 51 million miles (1.2 million miles) from Earth to Earth. In all its orbit, Earth\u2019s atmosphere will be about 100 million kilometers (approximately $2 million miles). By 2030 our planet\u2019s Earth is less than an average for Earth\u2019s Earth. The planet is up to 66 million miles.\nThe solar system has about 10 billion kilometers of planet. The Earth\u2019s Earth has about 30 million kilometres (more than 50 million kilometers). That\u2019s why Earth\u2019s planet\u2019s Earth will get about 8 million kilometers (95 million) every year, the average Earth is about 2.5 billion kilometers (9,000 miles) from the Earth\u2019s atmosphere with more than 41 million kilometers (2.7 million kilometers) more than 10 tons (2.2 million) and a 3.5 million kilometers (1.8 million kilomet",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3448.0,
+      "repetition": 0.0,
+      "prompt_echo": 0.02666666666666667,
+      "on_topic": 0.4,
+      "passed": null
+    },
+    {
+      "id": "adv_engine",
+      "category": "adversarial",
+      "prompt": "Explain, step by step, how an internal combustion engine works.",
+      "text": "Fire Oil Dogs\nCleaner Nelson has worked to build a model for combustion engines. Nelson has been headed by several scientists at the GPU Research Center in Fire Awarenium, and has worked with his graduate students and engineers for the BBC Center.\nThe Eye Institute was located on 30 June 2010 in Lancet City, but his work is on the site at UCSR.\nThe National Science Foundation\u2019s Fire Oil, located on the east coast of the Kelson River on Riverside, is located in the east of Riverside.\nThe National Science Center is the first of the National Science Foundation and its author to provide an overview of how to build and build the project by creating a range of opportunities to produce new opportunities and experience, including projects, projects, and collaboration with scientists. The first is the National Science Foundation of Science and Technologies to help understand how science works for science programs.\nThe National Science Education Program is supported by The National Science Institute, ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3509.1,
+      "repetition": 0.006211180124223602,
+      "prompt_echo": 0.060240963855421686,
+      "on_topic": 0.5555555555555556,
+      "passed": null
+    },
+    {
+      "id": "adv_mars",
+      "category": "adversarial",
+      "prompt": "List ten things you know about the planet Mars.",
+      "text": "Fire Live Stories\nThe Earth is about 2.5 times larger than those Earth Moon. The Earth has been nearly as high as 10 times the Earth is about 1.7 times the Earth\u2019s surface and was so big that it is almost entirely difficult to see. The Earth\u2019s surface covering has almost 1 million miles to about 1.5 billion miles. That is the temperature of about 0.4 times greater than the Earth\u2019s surface.\nThe Earth is about to about 2,000 times higher than the Earth\u2019s surface area where Earth is about 30 times larger than the Earth\u2019s atmosphere and it takes to about 50,000 times more energy (about 20 times more energy) than Earth is about 2,000 times the Earth.\nThe Earth is only about 1.8 billion years ago. The Earth is about 15 billion years ago, the average Earth is about 1,200 million years or more. Earth is about 50 times more energy per year without an average global or global climate or climate change as the Earth is about taking place. The Earth is about 900 million years, and around 8,000 years ago",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3489.7,
+      "repetition": 0.022222222222222223,
+      "prompt_echo": 0.02702702702702703,
+      "on_topic": 0.2222222222222222,
+      "passed": null
+    },
+    {
+      "id": "adv_king",
+      "category": "adversarial",
+      "prompt": "The king sat on his throne and",
+      "text": " to the next generation.\nThe king sinnings came from Bhdad and Bhdad.\nIt is said that the king sat on them the king sat on the ground that his father's grandfather's sat on her head was sang and sat on one hand he sat on the other.\nIn the same day the king sin on her head is his head his face and sat on the same side.\nIn his ears, I see this sin on a triangle. Then there is more the king sin on the ground. The thou sat on thy hand and sat on, and the king sat in the sat on it, she tears to sin on the other three ways that which he sat on it. This sin on it is, \"Let me the sin on it.\"\nThe king sin on thy head is on it; and the king sin was sending over it. \"Thou shall be\", and sin on the same side, \"And let ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3438.5,
+      "repetition": 0.01282051282051282,
+      "prompt_echo": 0.10526315789473684,
+      "on_topic": 0.8571428571428571,
+      "passed": null
+    },
+    {
+      "id": "adv_coin",
+      "category": "adversarial",
+      "prompt": "If you flip a coin, the probability of heads is",
+      "text": " too far in space.\nBack in the mid-1990s, Back in the 1990s, Bach had never been able to find more reasons for being in space than in space. Bach had much of a more robust approach. Somehower was still in space. The fact that Bach could find his bachelor of some kind of pointed relativity on Earth, just as they could find.\nBach would say it may be more interesting.\nBach never heard an entry-looking proof, the inert wouldn\u2019t be in a different place? I believe the notion of Bach had even been in the past for several years. That would be uncomfortable. Nor was it uncomfortable. Had, now Bach would never be happier than Bach would have to do with Bach or Bach before, and that Bach could be, and then he would do a better job, he would be an element of his back the other half an hour.\nBach could make him feel a reward or bachelor\u2019s wor",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3484.2,
+      "repetition": 0.0,
+      "prompt_echo": 0.033707865168539325,
+      "on_topic": 0.3,
+      "passed": null
+    },
+    {
+      "id": "adv_echo",
+      "category": "adversarial",
+      "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+      "text": "'\nSometimes you say \"I don't know\" your words or phones. So what does that mean? Should you like to say to you?\nWhat do I like for this? Here are some books that are so smart as you're in an adult and are so small that people will have to get so high.\nSo, let's get out a little more time and more about the same word?\nWhat is a word I mean by chance, but your word is different from my own words?\nBy this time I don't understand what she wants for?\nSo, how did you know if I loved me while I had seen my friends? Well, it's not uncomfortable and I don't want to know what?\nHow are you happen to my family?\nAnd if I started to get my first word, then I can't tell you about my word?\nSo I did I didn't know that my word is a whole word but it was not an adjective or adjective but a word. I liked I did not believe I could ",
+      "token_count": 200,
+      "finished_reason": "max_len",
+      "temperature": 0.8,
+      "latency_ms": 3487.6,
+      "repetition": 0.0,
+      "prompt_echo": 0.033707865168539325,
+      "on_topic": 0.25,
+      "passed": null
+    }
+  ],
+  "stress": {
+    "threshold": 0.1,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "n_prompts": 10,
+    "loops": 1,
+    "worst_repetition": 0.11848341232227488,
+    "mean_repetition": 0.007067781129686772,
+    "per_prompt": [
+      {
+        "id": "adv_france",
+        "prompt": "The capital of France is",
+        "mean_repetition": 0.004155227799821688,
+        "worst_repetition": 0.011428571428571429,
+        "worst_seed": 8,
+        "looped": false
+      },
+      {
+        "id": "adv_story",
+        "prompt": "Once upon a time, in a land far away,",
+        "mean_repetition": 0.00480320388983698,
+        "worst_repetition": 0.016574585635359115,
+        "worst_seed": 6,
+        "looped": false
+      },
+      {
+        "id": "adv_ai",
+        "prompt": "Artificial intelligence is",
+        "mean_repetition": 0.00181507557589492,
+        "worst_repetition": 0.006622516556291391,
+        "worst_seed": 9,
+        "looped": false
+      },
+      {
+        "id": "adv_1969",
+        "prompt": "In 1969, humans first",
+        "mean_repetition": 0.0026061365535049747,
+        "worst_repetition": 0.012987012987012988,
+        "worst_seed": 4,
+        "looped": false
+      },
+      {
+        "id": "adv_orbit",
+        "prompt": "The Earth orbits the Sun because",
+        "mean_repetition": 0.0060475831438534956,
+        "worst_repetition": 0.042105263157894736,
+        "worst_seed": 6,
+        "looped": false
+      },
+      {
+        "id": "adv_engine",
+        "prompt": "Explain, step by step, how an internal combustion engine works.",
+        "mean_repetition": 0.010659572950549553,
+        "worst_repetition": 0.04020100502512563,
+        "worst_seed": 9,
+        "looped": false
+      },
+      {
+        "id": "adv_mars",
+        "prompt": "List ten things you know about the planet Mars.",
+        "mean_repetition": 0.004838326125821256,
+        "worst_repetition": 0.0213903743315508,
+        "worst_seed": 2,
+        "looped": false
+      },
+      {
+        "id": "adv_king",
+        "prompt": "The king sat on his throne and",
+        "mean_repetition": 0.006113284615708068,
+        "worst_repetition": 0.042682926829268296,
+        "worst_seed": 5,
+        "looped": false
+      },
+      {
+        "id": "adv_coin",
+        "prompt": "If you flip a coin, the probability of heads is",
+        "mean_repetition": 0.022119699734819816,
+        "worst_repetition": 0.11848341232227488,
+        "worst_seed": 1,
+        "looped": true
+      },
+      {
+        "id": "adv_echo",
+        "prompt": "Please repeat the last three words I wrote exactly: 'one two three'.",
+        "mean_repetition": 0.007519700907056971,
+        "worst_repetition": 0.02531645569620253,
+        "worst_seed": 5,
+        "looped": false
+      }
+    ]
+  }
+}

@@ -30,11 +30,19 @@ def _resolve_device(device: str | torch.device) -> torch.device:
 
 @dataclass(frozen=True)
 class Generation:
-    """Result of a single ``generate`` call."""
+    """Result of a single ``generate`` call.
+
+    ``token_ids`` covers the prompt plus the completion, so ``prompt_tokens``
+    is what separates them: ``token_ids[prompt_tokens:]`` is the new text, and
+    ``len(token_ids) - prompt_tokens`` is the number of generated tokens. The
+    prompt may be shorter than ``tokenizer.encode(prompt)`` because the engine
+    trims the oldest tokens to leave room for the requested budget.
+    """
 
     text: str
     token_ids: list[int]
     finished_reason: str  # "max_len" | "eos" | "stop_string"
+    prompt_tokens: int = 0
 
 
 class InferenceEngine:
@@ -72,7 +80,12 @@ class InferenceEngine:
             stop_sequences, use_cache, no_repeat_ngram_size,
         ):
             ids.append(token)
-        return Generation(text=self.tokenizer.decode(ids), token_ids=ids, finished_reason=self._finish_reason(ids, eos, stop_sequences))
+        return Generation(
+            text=self.tokenizer.decode(ids),
+            token_ids=ids,
+            finished_reason=self._finish_reason(ids, eos, stop_sequences),
+            prompt_tokens=input_ids.size(1),
+        )
 
     def stream(
         self,

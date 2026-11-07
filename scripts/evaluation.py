@@ -17,12 +17,12 @@ import sys
 from pathlib import Path
 
 import torch
-import yaml
 
 from data_pipeline.dataset import TextDataset
 from evaluation.generation_eval import probe_generation
 from evaluation.memorization import evaluate_memorization
 from evaluation.perplexity import evaluate_loss, perplexity
+from harness.runner import load_run_config
 from inference.engine import InferenceEngine
 
 DEFAULT_PROMPTS = [
@@ -32,19 +32,6 @@ DEFAULT_PROMPTS = [
     "In 1969, humans first",
     "The Earth orbits the Sun because",
 ]
-
-
-def _load_config(config_arg: str | None, checkpoint: Path) -> dict:
-    if config_arg:
-        return yaml.safe_load(Path(config_arg).read_text(encoding="utf-8"))
-    # Trainer-run dirs carry their own config.yaml; the checkpoint itself holds
-    # a stashed "config" dict used for things like model sizing when that is
-    # missing (pre-Stage-7 checkpoints).
-    run_config = Path(checkpoint).parent / "config.yaml"
-    if run_config.is_file():
-        return yaml.safe_load(run_config.read_text(encoding="utf-8"))
-    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    return ckpt.get("config")
 
 
 def main() -> None:
@@ -57,7 +44,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=None, help="Write results to this JSON file")
     args = parser.parse_args()
 
-    config = _load_config(args.config, args.checkpoint)
+    config = load_run_config(args.config, args.checkpoint)
     model_cfg = config["model"]
     ctx = int(model_cfg["context_length"])
     batch_size = int(config.get("training", {}).get("batch_size", 8))

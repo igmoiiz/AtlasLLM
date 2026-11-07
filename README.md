@@ -41,12 +41,12 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | Data pipeline | `data_pipeline/` | Core done, tested | [dataset.md](DOCUMENTATION/dataset.md) |
 | Training pipeline | `training/` | Done, tested | [training.md](DOCUMENTATION/training.md) |
 | Inference engine | `inference/` | Done, tested | [inference.md](DOCUMENTATION/inference.md) |
-| Evaluation | `evaluation/` | Planned | [experiments.md](DOCUMENTATION/experiments.md) |
+| Evaluation | `evaluation/` | Done, tested | [experiments.md](DOCUMENTATION/experiments.md) |
 | Safety guardrails | `safety/` | Planned | [safety.md](DOCUMENTATION/safety.md) |
-| Test harness | `harness/` | Planned | [harness.md](DOCUMENTATION/harness.md) |
+| Test harness | `harness/` | Done, tested, measured | [harness.md](DOCUMENTATION/harness.md) |
 | Monitoring | `monitoring/` | Planned | [experiments.md](DOCUMENTATION/experiments.md) |
 
-The `evaluation/`, `safety/`, `harness/`, and `monitoring/` packages currently exist as stub modules. Their design is documented so implementation can be community-contributed or tackled next without guessing. The `tests/` suite (84 tests) covers the subsystems marked Done.
+The `safety/` and `monitoring/` packages are still stubs. Their design is documented so implementation can be tackled next without guessing. The `tests/` suite (167 tests) covers the subsystems marked Done.
 
 ## Default configuration (AtlasLLM-Small)
 
@@ -139,13 +139,13 @@ AtlasLLM/
 ├── data_pipeline/      # Preprocessing, dataset, batching
 ├── training/           # Loss, optimizer, scheduler, trainer, checkpoints
 ├── inference/          # Generation, sampling, KV cache
-├── evaluation/         # Planned: perplexity, benchmarks, generalization
+├── evaluation/         # Perplexity, memorization, generation probes
 ├── safety/             # Planned: input/output guardrails
-├── harness/            # Planned: automated scenario testing
+├── harness/            # Probe suites, scoring, regression gate
 ├── monitoring/         # Planned: metrics, profiling
 ├── configs/            # YAML experiment configurations
 ├── scripts/            # CLI utilities (chat, dataset inspection, training analysis)
-├── tests/              # Unit tests (84)
+├── tests/              # Unit tests (167)
 ├── DOCUMENTATION/      # Project documentation (start at index.md)
 ├── data/               # Data: raw/ (immutable), interim/, processed/
 └── checkpoints/        # Model runs (git-ignored)
@@ -164,7 +164,7 @@ The full documentation set, meant to be read as a chain:
 - [Hardware](DOCUMENTATION/hardware.md) - memory budget, device strategy, measured throughput
 - [Experiments](DOCUMENTATION/experiments.md) - planned experiment system
 - [Safety](DOCUMENTATION/safety.md) - planned guardrail design
-- [Harness](DOCUMENTATION/harness.md) - planned automated test harness
+- [Harness](DOCUMENTATION/harness.md) - the probe suites and regression gate
 
 ## Relationship
 

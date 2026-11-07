@@ -179,8 +179,9 @@ The last row is the AtlasBase-v2 capacity experiment (2026-09-13): a 48M model
 (D=512, L=10, d_ff=2048) trained on the *same* 186M-token AtlasBase corpus and
 16k tokenizer, so the only change vs AtlasBase-v1 is scale (13M -> 48M, a 3.7x
 capacity step, LR 3e-4 -> 2e-4). This was prompted by sampling-sweep + scorecard
-diagnostics (scripts/sampling_sweep.py, scripts/scorecard.py, reports/data/
-AtlasBase-v1/): repetition in the 13M base LM was a temperature artifact with no
+diagnostics (scripts/sampling_sweep.py and the harness scorecard suite,
+reports/data/AtlasBase-v1/): repetition in the 13M base LM was a temperature
+artifact with no
 sweet spot - low T loops, high T drifts into invented words - so derailment was
 diagnosed as model capacity, not sampling. Result: val ppl 225 -> 125 (-44%),
 loss 5.4174 -> 4.8282. 95k steps survived five power cuts (last.pt/best.pt resume

@@ -26,6 +26,7 @@ import yaml
 from data_pipeline.dataset import TextDataset
 from model.atlas_llm import AtlasLLM
 from model.config import ModelConfig
+from monitoring.system import device_info
 from training.checkpoint import newest_readable_checkpoint
 from training.trainer import Trainer
 
@@ -54,7 +55,7 @@ def write_reproducibility(run_dir: Path, config: dict, device: torch.device, see
         "cuda": torch.version.cuda,
         "python": platform.python_version(),
         "device": str(device),
-        "hardware": torch.cuda.get_device_name(0) if device.type == "cuda" else platform.processor(),
+        "hardware": device_info(device).name,
         "dataset_windows": {name: len(ds) for name, ds in datasets.items()},
     }
     (run_dir / "reproducibility.json").write_text(json.dumps(info, indent=2), encoding="utf-8")

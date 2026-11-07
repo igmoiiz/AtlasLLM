@@ -15,6 +15,7 @@ from pathlib import Path
 
 import torch
 
+from monitoring.system import vram_usage
 from training.checkpoint import load_checkpoint, save_checkpoint
 from training.loss import lm_cross_entropy
 from training.scheduler import build_lr_scheduler
@@ -154,14 +155,16 @@ class Trainer:
                 tokens_per_sec = steps_in_section * token_count / max(now - t_section, 1e-9)
                 t_section, steps_in_section = now, 0
                 lr = self.optimizer.param_groups[0]["lr"]
-                gpu_mb = torch.cuda.memory_allocated(self.device) / 2**20 if self.device.type == "cuda" else 0.0
+                vram = vram_usage(self.device)
+                gpu_mb = vram.allocated_mb if vram else 0.0
                 record = {
                     "step": step,
                     "train_loss": last_loss,
                     "lr": lr,
                     "grad_norm": float(grad_norm),
                     "tokens_per_sec": round(tokens_per_sec, 1),
-                    "gpu_memory_mb": round(gpu_mb, 1),
+                    "gpu_memory_mb": gpu_mb,
+                    "gpu_reserved_mb": vram.reserved_mb if vram else 0.0,
                 }
                 print(
                     f"step {step}: loss={last_loss:.4f} lr={lr:.2e} "

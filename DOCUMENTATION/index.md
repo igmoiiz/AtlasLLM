@@ -53,9 +53,10 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | 9 | Instruction tuning | Planned |
 | 10 | Safety guardrails (input/output filters, policy) | Done, tested, opt-in |
 | 11 | Automated harness (probe suites, scoring, gate) | Done, tested, measured |
-| 12 | Release (v1.0) | Planned |
+| 12 | Monitoring (device/VRAM introspection, step benchmark) | Done, tested, measured |
+| 13 | Release (v1.0) | Planned |
 
-**Quality gates currently passing:** 188 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
+**Quality gates currently passing:** 195 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
 
 For the measured numbers behind the "Done" claims, see [hardware.md](hardware.md) and [training.md](training.md).
 

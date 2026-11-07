@@ -44,9 +44,11 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | Evaluation | `evaluation/` | Done, tested | [experiments.md](DOCUMENTATION/experiments.md) |
 | Safety guardrails | `safety/` | Done, tested, opt-in | [safety.md](DOCUMENTATION/safety.md) |
 | Test harness | `harness/` | Done, tested, measured | [harness.md](DOCUMENTATION/harness.md) |
-| Monitoring | `monitoring/` | Planned | [experiments.md](DOCUMENTATION/experiments.md) |
+| Monitoring | `monitoring/` | Done, tested, measured | [hardware.md](DOCUMENTATION/hardware.md) |
 
-The `monitoring/` package is still a stub. Their design is documented so implementation can be tackled next without guessing. The `tests/` suite (188 tests) covers the subsystems marked Done.
+The `tests/` suite (195 tests) covers the subsystems marked Done. All four
+previously stubbed packages (`evaluation/`, `safety/`, `harness/`,
+`monitoring/`) now have working implementations.
 
 ## Default configuration (AtlasLLM-Small)
 
@@ -142,10 +144,10 @@ AtlasLLM/
 ├── evaluation/         # Perplexity, memorization, generation probes
 ├── safety/             # Policy-driven input/output guardrails (opt-in)
 ├── harness/            # Probe suites, scoring, regression gate
-├── monitoring/         # Planned: metrics, profiling
+├── monitoring/         # Device/VRAM introspection, step benchmark
 ├── configs/            # YAML experiment configurations
-├── scripts/            # CLI utilities (chat, dataset inspection, training analysis)
-├── tests/              # Unit tests (167)
+├── scripts/            # CLI utilities (chat, benchmark, dataset inspection, training analysis)
+├── tests/              # Unit tests (195)
 ├── DOCUMENTATION/      # Project documentation (start at index.md)
 ├── data/               # Data: raw/ (immutable), interim/, processed/
 └── checkpoints/        # Model runs (git-ignored)

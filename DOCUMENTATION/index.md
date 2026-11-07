@@ -13,7 +13,7 @@ A language model is a program that learns to predict the next word of a text. Th
 3. **Model.** A Transformer: a neural network that reads token history and guesses the next token. See [architecture.md](architecture.md).
 4. **Training.** Repeatedly showing the model real text, measuring how wrong its guesses are, and adjusting its internal numbers to make future guesses better. See [training.md](training.md).
 5. **Inference.** Using the trained model to finish a prompt, one token at a time. See [inference.md](inference.md).
-6. **Measurement.** Fixed probe suites score every checkpoint and a gate catches regressions. See [harness.md](harness.md) and [experiments.md](experiments.md). Guardrails are the remaining planned stage: [safety.md](safety.md).
+6. **Measurement.** Fixed probe suites score every checkpoint and a gate catches regressions. See [harness.md](harness.md) and [experiments.md](experiments.md). Guardrails are implemented but opt-in, and monitoring is still planned: [safety.md](safety.md).
 
 Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardware.md).
 
@@ -29,7 +29,7 @@ Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardw
 | [inference.md](inference.md) | Generation, sampling, KV cache | Active |
 | [hardware.md](hardware.md) | Memory budget, device strategy, speed | Active |
 | [experiments.md](experiments.md) | Configuration-driven experiment design | Planned |
-| [safety.md](safety.md) | Guardrail architecture design | Planned |
+| [safety.md](safety.md) | Policy-driven input/output guardrails | Active |
 | [harness.md](harness.md) | Probe suites, scoring, regression gate | Active |
 
 ## Project status
@@ -51,11 +51,11 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | 7 | Inference engine (sampling, KV cache, streaming) | Done, tested |
 | 8 | Evaluation suite (perplexity, memorization, probes) | Done, tested |
 | 9 | Instruction tuning | Planned |
-| 10 | Safety guardrails | Planned |
+| 10 | Safety guardrails (input/output filters, policy) | Done, tested, opt-in |
 | 11 | Automated harness (probe suites, scoring, gate) | Done, tested, measured |
 | 12 | Release (v1.0) | Planned |
 
-**Quality gates currently passing:** 167 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
+**Quality gates currently passing:** 188 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
 
 For the measured numbers behind the "Done" claims, see [hardware.md](hardware.md) and [training.md](training.md).
 
@@ -93,7 +93,7 @@ AtlasLLM/
 ├── training/           # Training orchestration
 ├── inference/          # Generation engine
 ├── evaluation/         # Planned: perplexity and benchmarks
-├── safety/             # Planned: guardrails (external to model)
+├── safety/             # Policy-driven guardrails (opt-in, external)
 ├── harness/            # Probe suites, scoring, regression gate
 ├── monitoring/         # Planned: metrics and profiling
 ├── configs/            # YAML experiment configurations

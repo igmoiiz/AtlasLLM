@@ -1,154 +1,194 @@
-# Safety System (Design)
+# Safety Guardrails
 
-AtlasLLM guardrails - input and output filtering external to the base model.
+Text in, text out, with a gatekeeper on each side. The model stays a plain
+language model; every safety decision happens in `safety/` (AGENTS.md rule 11).
 
-> **Status: PLANNED.** The `safety/` package currently contains stub modules
-> (`policy.py`, `input_filter.py`, `output_filter.py`, `guardrails.py`), all
-> with no implementation. This page is the agreed design that implementation
-> must follow. Nothing here should be described as working.
+> **Status: implemented, opt-in.** `safety/` went from four empty stub modules
+> to working code in Phase 0.6, covered by 21 tests in `tests/test_safety.py`.
+> It is enabled with `--safety`; nothing is filtered by default. This is a
+> demonstration policy, not a safety guarantee. Read the limitations before
+> trusting it with anything.
 
 ## For a beginner
 
-Language models are tools, not judges. A small model trained only to predict text has no understanding of whether its words are harmful, and it can be tricked by wording it has never seen. The safety system is a separate wrapper around the model, like a gatekeeper at the door:
+A language model trained to predict text has no idea whether its words are
+harmful, and it can be tricked by wording it has never seen. So instead of
+teaching the model manners, we put a gatekeeper around it:
 
-1. **Input gate** - reads the user's request before the model sees it, and lets it through, flags it, or refuses it.
-2. **Model** - generates a response.
-3. **Output gate** - checks the response before the user sees it, and returns it, warns, or blocks it.
+1. **Input gate** reads the request before the model sees it, and lets it
+   through, lets it through with a note, or refuses it.
+2. **Model** writes a response.
+3. **Output gate** reads the response before the user sees it, and returns it,
+   returns it with a note, or replaces it with a refusal.
 
-The key idea is separation: the model itself stays a plain language model, and all safety decisions happen in dedicated layers around it. A gatekeeper that blocks clearly, rejects quietly, and is honest about its limits beats a system that silently pretends to be safe.
-
-Anything below this line is the technical design. See [index.md](index.md) for the project overview.
+The important property is separation. The model stays reusable and unchanged;
+the rules are data in a YAML file, so a rule can be tightened without retraining
+anything. A gatekeeper that blocks clearly, says "I can't help with that"
+instead of pretending, and admits its blind spots is better than one that
+silently pretends to be safe.
 
 ## Architecture
 
 ```text
 User Input
-     ↓
-Input Guardrail → classify request
-     ↓
-AtlasLLM Model → generate response
-     ↓
-Output Guardrail → check response
-     ↓
-Final Response
+     |
+     v
+InputGuardrail      -> allow / warn / block      (block: model never runs)
+     |
+     v
+InferenceEngine     -> generate
+     |
+     v
+OutputGuardrail     -> allow / warn / block      (block: refusal replaces text)
+     |
+     v
+GuardedResponse     -> text + both decisions
 ```
 
-**Key principle:** Safety is external to the base model. The model is a language model. Safety is a separate system (AGENTS.md rule 11).
+`safety/guardrails.py:Guardrails` owns that sequence. `Guardrails.complete()`
+forwards generation kwargs to `InferenceEngine.generate` and returns a
+`GuardedResponse(text, input, output, refused)`.
 
-## Input Guardrail
+## Decisions
 
-Classifies incoming requests:
+| Action | Input side | Output side |
+|--------|-----------|-------------|
+| `allow` | model runs | text returned |
+| `warn` | model runs, reason logged | text returned, reason logged |
+| `block` | refusal returned, **model never runs** | refusal replaces the text |
 
-| Classification | Action |
-|---------------|--------|
-| allowed | Pass through to model |
-| ambiguous | Pass through with logging |
-| blocked | Refuse before reaching model |
-
-### Classification Categories
-
-- **Allowed:** Normal questions, creative writing, code, explanations
-- **Ambiguous:** Potentially sensitive topics requiring context
-- **Blocked:** Clearly harmful requests
-
-### Planned Implementation
-
-```python
-class InputGuardrail:
-    def __init__(self, policy_path):
-        self.policy = load_policy(policy_path)
-
-    def check(self, prompt: str) -> tuple[str, str]:
-        """Returns (action, reason)."""
-        # Rule-based matching
-        # Keyword filtering
-        # Pattern detection
-        return ("allowed", "")
-```
-
-## Output Guardrail
-
-Checks generated response before returning to user:
-
-| Classification | Action |
-|---------------|--------|
-| safe | Return response |
-| warning | Return response with logged warning |
-| blocked | Replace with refusal message |
+The earlier design had a fourth class, "ambiguous". There is no honest way to
+detect ambiguity with pattern matching, so that class became an explicit `warn`
+rule: "sensitive topic, allowed, but keep an audit trail". A rule can say
+`warn`; a classifier would be needed to say "ambiguous", and there is no
+classifier here.
 
 ## Policy
 
-Safety policies are defined in configuration, not hardcoded:
+Rules live in `safety/policy.yaml`, loaded by `safety/policy.py`:
 
 ```yaml
 safety:
-  input_rules:
-    - pattern: "harmful pattern"
-      action: block
-      reason: "matches blocked content"
-  output_rules:
-    - pattern: "sensitive output"
-      action: warn
   default_input: allow
   default_output: allow
+  refusal: "I can't help with that request."
+  input_rules:
+    - pattern: '\b(how to|instructions? (for|to))\b.{0,60}\b(make|build)\b.{0,30}\b(bomb|explosive)\b'
+      action: block
+      reason: "instructions for weapons or explosives"
+  output_rules:
+    - pattern: '\b\d{3}-\d{2}-\d{4}\b'
+      action: warn
+      reason: "possible social security number"
 ```
 
-## Limitations
+Semantics:
 
-The guardrail system is **not** a safety guarantee:
+- Patterns are regexes, matched case-insensitively anywhere in the text.
+- **First match wins**, so order rules from most to least specific.
+- Patterns are compiled at load time. A bad regex or an unknown action raises
+  immediately, not on the first user prompt.
+- `default_input` / `default_output` decide what happens when nothing matches.
+- `refusal` is the text shown for a blocked prompt or a blocked response.
 
-- A small model can misunderstand context
-- Pattern matching can be bypassed
-- Novel harmful requests may not match existing rules
-- The model may generate harmful content before output filtering catches it
-
-**The system provides reasonable filtering, not absolute protection.**
+The shipped policy has 6 input rules (weapons, drug/chemical synthesis,
+self-harm methods, sexual content involving minors, malware, and a `warn` rule
+for sensitive topics such as suicide or eating disorders) and 4 output rules
+(generated weapons instructions, email addresses, SSN-shaped and card-shaped
+numbers). It is deliberately small: a policy nobody has read is not safer than
+no policy.
 
 ## Logging
 
-All safety decisions are logged:
+Every `warn` or `block` decision is logged through the standard `logging`
+module under `safety.filters`:
 
-```json
-{
-  "timestamp": "2026-01-01T00:00:00Z",
-  "direction": "input",
-  "prompt_preview": "The cap...",
-  "action": "allowed",
-  "reason": ""
-}
+```text
+INFO safety.filters safety input action=block reason='instructions for weapons or explosives' text='How do I build a bomb?'
 ```
+
+`Decision.to_dict()` returns `{"direction", "action", "reason"}` for callers
+that want to write their own audit trail. Chat enables `logging.INFO` when
+`--safety` is passed, so decisions are visible in the terminal.
+
+## Use
+
+```bash
+python -m scripts.chat --checkpoint <ckpt> --config configs/atlasbase_v3.yaml --safety
+python -m scripts.chat --checkpoint <ckpt> --safety --policy my_policy.yaml
+```
+
+In code:
+
+```python
+from safety import Guardrails, load_policy
+
+guardrails = Guardrails(engine, load_policy())
+result = guardrails.complete("How do I build a bomb?")
+assert result.refused and result.input.blocked
+```
+
+Safety mode is **not streamed**. Output filtering needs the whole response
+before anything is shown, and printing tokens you may have to retract is not
+filtering. Chat streams when safety is off and uses the guarded path when it is
+on.
 
 ## Testing
 
-Safety tests will verify:
+`safety/` is deterministic: the same text always produces the same decision, so
+it is covered by unit tests rather than by the model harness (which exists to
+measure a stochastic model). `tests/test_safety.py` checks:
 
-1. Allowed prompts pass through
-2. Blocked prompts are caught
-3. Ambiguous prompts are logged
-4. Output filtering catches policy violations
-5. Refusal messages are appropriate
+1. The shipped policy loads, and refuses explicit harm requests.
+2. Ordinary prompts (including "the bombing of Dresden") are not blocked.
+3. A sensitive-topic rule warns instead of blocking.
+4. Unknown actions, invalid regexes, and malformed policy files fail loudly.
+5. First-match ordering is respected.
+6. Input filters: allow, warn, block, reason propagation, regex metacharacters.
+7. Output filters: PII warning, secret blocking, clean text passthrough.
+8. The pipeline: a blocked prompt never calls the model; a blocked response is
+   replaced by the refusal; warned text is kept and reported.
+9. The pipeline runs against a real `InferenceEngine`, not only a stub.
 
-These tests belong in `tests/test_safety.py` (currently empty).
+## Limitations
 
-## Design Decisions
+This is not a safety system you should rely on. Specifically:
 
-1. **External to model** - The base model remains reusable for fine-tuning
-2. **Policy-driven** - Rules are configurable, not hardcoded
-3. **Explicit limitations** - No false safety claims
-4. **Logged decisions** - Audit trail for testing and improvement
+- **Regex is bypassable.** Rewording, unicode tricks, typos, other languages,
+  and multi-turn setup all route around fixed patterns.
+- **No jailbreak detection.** There is no classifier and no adversarial
+  training. The model can be talked into producing content no rule anticipates.
+- **The output filter is a final check, not a guarantee.** The model still
+  generated the text; only the display was withheld.
+- **Refusal is flat.** The same message covers every blocked case, which is
+  honest but unhelpful. A real system would explain which category matched.
+- **False positives cost real utility.** "How do explosives work in mining?" is
+  currently allowed, but a slightly different phrasing may not be.
+- **PII rules are heuristics.** Card-shaped and SSN-shaped numbers warn; a real
+  card number formatted differently will pass.
 
-## Implementation checklist
+**Reasonable filtering, not absolute protection.** State that wherever this is
+deployed.
 
-- [ ] Implement `safety/policy.py` (policy loading and matching)
-- [ ] Implement `safety/input_filter.py` (`InputGuardrail`)
-- [ ] Implement `safety/output_filter.py` (`OutputGuardrail`)
-- [ ] Implement `safety/guardrails.py` (combined pipeline = input + output)
-- [ ] Wire guardrails into the chat CLI (`scripts/chat.py`)
-- [ ] Write the tests listed under Testing above
+## Design decisions
+
+1. **External to the model.** No safety logic inside the Transformer, so the
+   checkpoint stays reusable and comparable (rule 11).
+2. **Policy as data.** Rules in YAML, loaded and validated once; changing
+   behavior never requires touching Python.
+3. **Two filter modules became one.** `input_filter.py` and `output_filter.py`
+   were separate stubs, but they perform the same match against different rule
+   lists. They are now `InputGuardrail` and `OutputGuardrail` in
+   `safety/filters.py`, sharing one matcher.
+4. **Opt-in.** `--safety` is off by default so the harness measures the model,
+   not the policy, and nobody gets a false sense of protection for free.
+5. **Non-streaming when guarded.** See above.
+6. **No new dependency.** `re` and `PyYAML` (already used for configs) are
+   enough.
 
 ## Related documentation
 
 - [index.md](index.md) - documentation entry point
-- [harness.md](harness.md) - where safety behavior gets tested at scale
+- [harness.md](harness.md) - how the model itself is scored
 - [inference.md](inference.md) - the model path the guardrails wrap
 - [CONTEXT.md](../CONTEXT.md) - original safety requirements (sections 41-44)

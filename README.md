@@ -42,11 +42,11 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | Training pipeline | `training/` | Done, tested | [training.md](DOCUMENTATION/training.md) |
 | Inference engine | `inference/` | Done, tested | [inference.md](DOCUMENTATION/inference.md) |
 | Evaluation | `evaluation/` | Done, tested | [experiments.md](DOCUMENTATION/experiments.md) |
-| Safety guardrails | `safety/` | Planned | [safety.md](DOCUMENTATION/safety.md) |
+| Safety guardrails | `safety/` | Done, tested, opt-in | [safety.md](DOCUMENTATION/safety.md) |
 | Test harness | `harness/` | Done, tested, measured | [harness.md](DOCUMENTATION/harness.md) |
 | Monitoring | `monitoring/` | Planned | [experiments.md](DOCUMENTATION/experiments.md) |
 
-The `safety/` and `monitoring/` packages are still stubs. Their design is documented so implementation can be tackled next without guessing. The `tests/` suite (167 tests) covers the subsystems marked Done.
+The `monitoring/` package is still a stub. Their design is documented so implementation can be tackled next without guessing. The `tests/` suite (188 tests) covers the subsystems marked Done.
 
 ## Default configuration (AtlasLLM-Small)
 
@@ -140,7 +140,7 @@ AtlasLLM/
 ├── training/           # Loss, optimizer, scheduler, trainer, checkpoints
 ├── inference/          # Generation, sampling, KV cache
 ├── evaluation/         # Perplexity, memorization, generation probes
-├── safety/             # Planned: input/output guardrails
+├── safety/             # Policy-driven input/output guardrails (opt-in)
 ├── harness/            # Probe suites, scoring, regression gate
 ├── monitoring/         # Planned: metrics, profiling
 ├── configs/            # YAML experiment configurations
@@ -163,7 +163,7 @@ The full documentation set, meant to be read as a chain:
 - [Inference](DOCUMENTATION/inference.md) - generation, sampling, KV cache
 - [Hardware](DOCUMENTATION/hardware.md) - memory budget, device strategy, measured throughput
 - [Experiments](DOCUMENTATION/experiments.md) - planned experiment system
-- [Safety](DOCUMENTATION/safety.md) - planned guardrail design
+- [Safety](DOCUMENTATION/safety.md) - policy-driven guardrails
 - [Harness](DOCUMENTATION/harness.md) - the probe suites and regression gate
 
 ## Relationship

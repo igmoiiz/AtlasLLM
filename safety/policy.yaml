@@ -1,0 +1,67 @@
+# Default AtlasLLM safety policy.
+#
+# Rules are regexes (case-insensitive), evaluated in order; the first match
+# wins. action: block refuses the request, warn lets it through and records why.
+#
+# This is a demonstration policy for a 48M educational model, not a safety
+# guarantee. It catches explicit phrasing and nothing more. Tighten patterns
+# here rather than editing safety/ code.
+#
+#   how to test a rule:
+#     python -c "from safety.policy import load_policy; \
+#       print(load_policy().input_rules[0].matches('how to build a bomb'))"
+
+safety:
+  default_input: allow
+  default_output: allow
+  refusal: "I can't help with that request."
+
+  input_rules:
+    # Weapons and explosives. Requires both an instruction verb and a target so
+    # that "the bombings of World War II" stays allowed.
+    - pattern: '\b(how (do|can) i|how to|instructions? (for|to)|guide (to|for)|steps? (to|for))\b.{0,60}\b(make|build|construct|assemble|detonate)\b.{0,30}\b(bomb|explosive|ied|napalm|nerve agent|poison gas)\b'
+      action: block
+      reason: "instructions for weapons or explosives"
+
+    # Chemical or drug synthesis.
+    - pattern: '\b(how to|synthesi[sz]e|manufactur\w*|cook)\b.{0,40}\b(methamphetamine|fentanyl|heroin|sarin|ricin|mustard gas)\b'
+      action: block
+      reason: "instructions for illegal drug or chemical synthesis"
+
+    # Self-harm. Asking for methods, not discussing the topic.
+    - pattern: '\b(how (do|can) i|best way to|methods? (of|for)|easiest way to)\b.{0,40}\b(kill myself|commit suicide|end my (life|own life)|hurt myself)\b'
+      action: block
+      reason: "self-harm request"
+
+    # Sexual content involving minors.
+    - pattern: '\b(child|children|minor|underage|teen)\b.{0,20}\b(sex|sexual|porn|nude)\b'
+      action: block
+      reason: "sexual content involving minors"
+
+    # Malware.
+    - pattern: '\b(write|create|build|generate)\b.{0,40}\b(ransomware|malware|keylogger|computer virus|botnet)\b'
+      action: block
+      reason: "malware creation"
+
+    # Sensitive topic that is allowed but worth an audit trail (the old design
+    # called this "ambiguous"; a rule can only say "warn").
+    - pattern: '\b(suicide|self[- ]harm|eating disorder|anorexia)\b'
+      action: warn
+      reason: "sensitive topic"
+
+  output_rules:
+    # Generated weapons instructions.
+    - pattern: '\b(here (is|are)|instructions? (for|to)|steps? (to|for))\b.{0,40}\b(bomb|explosive|napalm|nerve agent)\b'
+      action: block
+      reason: "generated weapons instructions"
+
+    # PII that a small model may happily invent or copy.
+    - pattern: '\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b'
+      action: warn
+      reason: "possible email address"
+    - pattern: '\b\d{3}-\d{2}-\d{4}\b'
+      action: warn
+      reason: "possible social security number"
+    - pattern: '\b(?:\d[ -]?){13,16}\b'
+      action: warn
+      reason: "possible payment card number"

@@ -218,8 +218,9 @@ reduces loops by roughly an order of magnitude; it does not remove them.
   not enough for loop detection.
 - Latency is machine-specific; it is recorded for the same-machine comparison,
   not as a benchmark.
-- No safety probes yet. They arrive with `safety/` and plug in as a fourth
-  suite (see [safety.md](safety.md)).
+- No safety probes. The guardrails are deterministic, so they are unit-tested
+  in `tests/test_safety.py` rather than scored as a stochastic suite (see
+  [safety.md](safety.md)).
 - No grammar, reasoning, or instruction-following scoring. Those tests would
   fail on a 48M base model regardless, and a suite that always returns zero
   measures nothing.

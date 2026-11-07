@@ -722,3 +722,58 @@ no-repeat-n-gram penalty in sampling + optionally raise the chat default T to
    `inference/sampling.py` + chat default T → ~0.9, to kill the unseeded loops
    the manual chat exposed.
 3. Then SFT → AtlasLLM-Instruct.
+
+## Session 2026-11-07: Phase 0 hardening - harness, safety, monitoring
+
+Goal: make every subsystem real before the 930M-token v3 run. Phases 0.1-0.7
+are now committed; 0.8 (docs truth pass) and 0.9 (CI) remain.
+
+### Commits
+- 8c6af51 Phase 0.1: delete empty stubs and dead AGENTS-02.md, fix F841.
+- c696860 Phase 0.2: no-repeat n-gram ban in sampling. Measured 3/30 unseeded
+  runs looped without it, 0/30 with it.
+- f7ddcb2 Phase 0.3: `--resume auto` picks the newest readable checkpoint and
+  records the resolved path in reproducibility.json.
+- 4608673 Phase 0.4: WSD LR schedule (warmup 2k, plateau, 10% cosine tail).
+- 96994ce Phase 0.5: harness/ - 36 probes (6 scorecard, 10 adversarial, 20
+  factual cloze), whole-word answer matching, per-category repetition, JSON
+  reports, relative gate (val ppl +2%, repetition +0.10), cross-seed stress.
+  Removed scripts/scorecard.py and scripts/adversarial_eval.py.
+- 3a7f1bf Phase 0.6: safety/ - YAML policy (6 input, 4 output rules), filters,
+  guardrails, chat --safety, 21 tests.
+- bd42616 Phase 0.7: monitoring/system.py (device_info, vram_usage), trainer
+  wiring (gpu_memory_mb, new gpu_reserved_mb), scripts/benchmark.py, 8 tests.
+  Deleted empty count_parameters.py and broken attention_visualization.py.
+
+### Baseline measured (AtlasBase-v2, reports/data/AtlasBase-v2/)
+- val ppl 125.0, test ppl 126.5, answered 3/23 (13%).
+- mean repetition 0.140 (adversarial 0.006, factual 0.247; greedy probes loop
+  by construction).
+- Loop stress, 10 prompts x 10 seeds: ban=4 -> 1/10 over 0.1 (worst 0.118);
+  ban=0 -> 8/10 (worst 0.896, adv_mars seed 5). The ban is worth ~10x.
+
+### Hardware measured (reports/data/hardware/bench_atlasbase_v2.json)
+GTX 1070, 48M model, context 256, 10 timed steps after 3 warmup:
+- B=8: 225.37 ms/step, 9,088 tok/s, 2,142.8 MiB peak, 2,312.0 reserved.
+- B=16: 396.99 ms/step, 10,318 tok/s, 3,713.0 MiB peak.
+- B=24: 565.40 ms/step, 10,867 tok/s, 5,286.1 MiB peak.
+- B=32: 675.60 ms/step, 12,126 tok/s, 6,855.4 MiB peak.
+- B=48/64 exceeded 8,192 MiB physical VRAM and did NOT raise OOM: Windows WDDM
+  paged to host memory, 9.9 s / 19.7 s per step (1,242 / 832 tok/s). Not usable.
+v3 stays at B=8: ~28h pure compute for 930M tokens before interruptions.
+
+### Gotchas
+- Windows CUDA overcommits VRAM instead of raising OOM. Never trust a batch
+  size whose peak allocation exceeds the device total; compare peak vs total.
+- Under WDDM, memory_allocated can exceed the device total, so tests must not
+  assert reserved <= total.
+- The committed benchmark artifact predates the `spills` flag; it shows the
+  same outcome as peak_allocated_mb > total_mb. Rerun the sweep to regenerate.
+
+### Next
+1. Rerun the benchmark sweep to regenerate the artifact with spills flags.
+2. Phase 0.8 docs truth pass (README, CONTEXT, DOCUMENTATION, test counts).
+3. Phase 0.9 GitHub Actions CI (ubuntu, Python 3.12, CPU torch, pytest+ruff).
+4. Phase 1: verify wikimedia/wikipedia 20231101.en, implement per-source budget +
+   cross-source dedup + weighted interleave, build the 930M-token AtlasBase-v3.
+5. Phase 2: 454,102 steps, WSD, 2e-4, B=8 x 256, save every 1000.

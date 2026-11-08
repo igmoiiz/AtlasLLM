@@ -15,6 +15,7 @@ Exit status is 0 normally and 1 when ``--baseline`` finds a regression.
 """
 
 import argparse
+import json
 import sys
 import time
 from dataclasses import replace
@@ -113,6 +114,41 @@ def evaluate_perplexity(engine: InferenceEngine, config: dict, max_batches: int 
     return results
 
 
+def evaluate_per_source(engine: InferenceEngine, config: dict, max_batches: int | None = None) -> dict:
+    """Held-out loss for each source's validation stream, when the dataset has one.
+
+    The pipeline writes ``val_<source>.bin`` next to ``val.bin`` and lists it in
+    ``meta.json``, so no extra flag or config key is needed. Sources whose
+    validation stream is shorter than one context window are skipped, and a
+    config without ``meta.json`` returns an empty dict rather than guessing.
+    """
+    val_path = (config.get("data") or {}).get("val_path")
+    if not val_path:
+        return {}
+    meta_path = Path(val_path).parent / "meta.json"
+    if not meta_path.is_file():
+        return {}
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+
+    ctx = engine.model.config.context_length
+    batch_size = int(config.get("training", {}).get("batch_size", 8))
+    results = {}
+    for name, entry in (meta.get("per_source", {}).get("val") or {}).items():
+        path = Path(entry.get("path", ""))
+        if not path.is_file() or entry.get("tokens", 0) <= ctx:
+            continue
+        loader = torch.utils.data.DataLoader(
+            TextDataset(path, ctx), batch_size=batch_size, shuffle=False
+        )
+        loss = evaluate_loss(engine.model, loader, engine.device, max_batches)
+        results[name] = {
+            "loss": loss,
+            "perplexity": perplexity(loss),
+            "tokens": entry.get("tokens"),
+        }
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoint", required=True, type=Path)
@@ -164,6 +200,11 @@ def main(argv: list[str] | None = None) -> int:
         payload["perplexity"] = evaluate_perplexity(
             engine, config, args.max_batches if args.max_batches > 0 else None
         )
+        per_source = evaluate_per_source(
+            engine, config, args.max_batches if args.max_batches > 0 else None
+        )
+        if per_source:
+            payload["perplexity"]["per_source"] = per_source
     if args.stress > 0:
         payload["stress"] = adversarial.stress_repetition(
             engine,

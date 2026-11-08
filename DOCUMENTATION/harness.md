@@ -102,6 +102,13 @@ Useful flags: `--max-tokens` overrides every probe's budget for a fast smoke
 run, `--quiet` drops the transcripts, `--no-perplexity` is the default,
 `--device cpu` avoids the GPU.
 
+`--perplexity` also reports a per-source validation perplexity when the corpus
+is a mixture. The data pipeline writes `val_<source>.bin` next to `val.bin` and
+lists it in `meta.json`, so the runner discovers the files without another flag;
+the numbers land under `perplexity.per_source` in the report. A source whose
+validation stream is shorter than one context window is skipped rather than
+reported as zero.
+
 ## Report format
 
 One JSON file per run. It is the artifact the docs cite, so it carries the
@@ -124,7 +131,9 @@ decoding settings next to the numbers:
 
 `--stress` adds a `stress` block with per-prompt mean/worst repetition and the
 seed that produced it. `--baseline` adds a `comparison` block with the gate
-result.
+result. On a mixed corpus, `perplexity.per_source` maps each source name to
+`{"loss", "perplexity", "tokens"}`; the numbers appear only after a v3
+checkpoint exists.
 
 ## The regression gate
 

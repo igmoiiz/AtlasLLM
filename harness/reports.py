@@ -145,6 +145,11 @@ def print_report(payload: dict, *, verbose: bool = True) -> None:
         ppl = payload["perplexity"]
         parts = [f"{split} ppl {ppl[f'{split}_perplexity']:.1f}" for split in ("val", "test") if f"{split}_perplexity" in ppl]
         print("perplexity: " + ", ".join(parts))
+        per_source = ppl.get("per_source") or {}
+        if per_source:
+            ordered = sorted(per_source.items(), key=lambda item: item[1]["perplexity"])
+            print("  val ppl per source: "
+                  + ", ".join(f"{name} {entry['perplexity']:.1f}" for name, entry in ordered))
     if payload.get("stress"):
         stress = payload["stress"]
         print(

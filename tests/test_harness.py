@@ -9,7 +9,13 @@ import pytest
 import torch
 
 from harness import adversarial, reports, scenarios, scoring
-from harness.runner import evaluate_perplexity, load_run_config, main, run_suite
+from harness.runner import (
+    evaluate_per_source,
+    evaluate_perplexity,
+    load_run_config,
+    main,
+    run_suite,
+)
 from inference.engine import InferenceEngine
 from model.atlas_llm import AtlasLLM
 from model.config import ModelConfig
@@ -229,6 +235,38 @@ def test_evaluate_perplexity_on_temp_bins(tmp_path):
 def test_evaluate_perplexity_without_bins_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         evaluate_perplexity(make_engine(), {"data": {"val_path": str(tmp_path / "absent.bin")}})
+
+
+def test_evaluate_per_source_uses_meta_json(tmp_path):
+    engine = make_engine()
+    rng = np.random.default_rng(0)
+    vocab = engine.model.config.vocab_size
+    ctx = engine.model.config.context_length
+    for name, size in (("alpha", 512), ("tiny", 4)):
+        rng.integers(0, vocab, size=size, dtype=np.uint16).tofile(tmp_path / f"val_{name}.bin")
+    meta = {
+        "per_source": {
+            "val": {
+                "alpha": {"path": str(tmp_path / "val_alpha.bin"), "tokens": 512},
+                "tiny": {"path": str(tmp_path / "val_tiny.bin"), "tokens": 4},
+            }
+        }
+    }
+    (tmp_path / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    config = {
+        "data": {"val_path": str(tmp_path / "val.bin")},
+        "training": {"batch_size": 2},
+    }
+    result = evaluate_per_source(engine, config, max_batches=2)
+    # A stream shorter than one window is skipped, not reported as zero.
+    assert set(result) == {"alpha"}
+    assert result["alpha"]["perplexity"] > 1.0
+    assert result["alpha"]["tokens"] == 512 > ctx
+
+
+def test_evaluate_per_source_without_meta_returns_empty(tmp_path):
+    result = evaluate_per_source(make_engine(), {"data": {"val_path": str(tmp_path / "val.bin")}})
+    assert result == {}
 
 
 def test_load_run_config_prefers_explicit_path(tmp_path):

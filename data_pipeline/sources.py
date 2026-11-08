@@ -81,6 +81,39 @@ def stream_hf_rows(
             yield text
 
 
+def _cache_is_enough(
+    prior: dict,
+    identifier: str,
+    hf_split: str,
+    config_name: str | None,
+    max_documents: int | None,
+    max_chars: int | None,
+) -> bool:
+    """Whether a cached acquisition satisfies the caps now being requested.
+
+    A cache built with a smaller budget looks valid by dataset name alone, which
+    is how an old 200k-row FineWeb cache silently under-filled a 558M-token
+    target. ``stopped_by`` records the cap that actually bound the previous
+    acquisition, so a bigger request re-acquires instead of reusing short data.
+    """
+    if prior.get("identifier") != identifier or prior.get("hf_split") != hf_split:
+        return False
+    if prior.get("config_name") != config_name:
+        return False
+    if "stopped_by" not in prior:
+        return True  # legacy cache; cannot prove it short, so keep old behaviour
+    if prior["stopped_by"] == "end":
+        return True  # the previous read reached the end of the split
+
+    prior_chars = prior.get("max_chars")
+    if max_chars is not None and (prior_chars is None or prior_chars < max_chars):
+        return False
+    prior_docs = prior.get("max_documents")
+    if max_documents is not None and (prior_docs is None or prior_docs < max_documents):
+        return False
+    return True
+
+
 def acquire(
     identifier: str,
     hf_split: str,
@@ -116,28 +149,30 @@ def acquire(
 
     if records_path.is_file() and source_path.is_file():
         prior = json.loads(source_path.read_text(encoding="utf-8"))
-        if (
-            prior.get("identifier") == identifier
-            and prior.get("hf_split") == hf_split
-            and prior.get("config_name") == config_name
-        ):
+        if _cache_is_enough(prior, identifier, hf_split, config_name, max_documents, max_chars):
             return {"status": "cached", "documents": prior["documents"], "source": prior}
 
+    # Caps are enforced here, not in the generator, so ``stopped_by`` can say
+    # which one bound the cache. A cap inside the generator would make an
+    # exhausted stream and a capped stream indistinguishable.
     row_iter = (
         rows if rows is not None
-        else stream_hf_rows(identifier, hf_split, max_documents, config_name)
+        else stream_hf_rows(identifier, hf_split, None, config_name)
     )
 
     raw_dir.mkdir(parents=True, exist_ok=True)
     count = 0
     chars = 0
+    stopped_by = "end"
     with open(records_path, "w", encoding="utf-8", newline="\n") as out:
         n = 0
         for text in row_iter:
             n += 1
             if max_documents is not None and n > max_documents:
+                stopped_by = "documents"
                 break
             if max_chars is not None and chars >= max_chars:
+                stopped_by = "chars"
                 break
             out.write(json.dumps({"text": text}, ensure_ascii=False) + "\n")
             count += 1
@@ -155,6 +190,7 @@ def acquire(
         "chars": chars,
         "max_documents": max_documents,
         "max_chars": max_chars,
+        "stopped_by": stopped_by,
         "version_id": dataset_version_id(identifier, hf_split),
         "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "raw_file": str(records_path),

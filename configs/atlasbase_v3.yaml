@@ -23,8 +23,12 @@ pipeline:
     # Tokens appended per source per interleave round (fractions scale this).
     mix_chunk_tokens: 4000000
   paths:
-    raw: "data/raw"
-    interim: "data/interim"
+    # Versioned cache roots: a rebuild of v3 must not reuse another dataset
+    # version's raw or interim documents (v2's 200k-row FineWeb cache is a
+    # different corpus). Processed bins and the tokenizer are already named
+    # per version.
+    raw: "data/raw/atlasbase_v3"
+    interim: "data/interim/atlasbase_v3"
     reports: "reports/data"
   registry:
     - name: fineweb_edu

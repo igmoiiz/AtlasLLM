@@ -280,6 +280,33 @@ def test_acquire_stops_at_char_budget(tmp_path: Path) -> None:
     info = json.loads((raw_dir / "source.json").read_text(encoding="utf-8"))
     assert info["max_chars"] == 350
     assert info["chars"] == 400
+    assert info["stopped_by"] == "chars"
+
+
+def test_acquire_reacquires_when_the_cached_cap_is_too_small(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    rows = [f"The cached row number {i} is English text for the corpus." for i in range(20)]
+    first = sources.acquire(
+        identifier="test/ds", hf_split="train", raw_dir=raw_dir,
+        source_name="capped", max_documents=5, rows=iter(rows),
+    )
+    assert first["documents"] == 5
+    assert first["source"]["stopped_by"] == "documents"
+
+    bigger = sources.acquire(
+        identifier="test/ds", hf_split="train", raw_dir=raw_dir,
+        source_name="capped", max_documents=12, rows=iter(rows),
+    )
+    assert bigger["status"] == "acquired"
+    assert bigger["documents"] == 12
+
+    smaller = sources.acquire(
+        identifier="test/ds", hf_split="train", raw_dir=raw_dir,
+        source_name="capped", max_documents=8, rows=iter(rows),
+    )
+    # The cache is an immutable superset; a smaller cap reuses it.
+    assert smaller["status"] == "cached"
+    assert smaller["documents"] == 12
 
 
 def test_process_shared_dedup_keeps_one_copy_across_sources(tmp_path: Path) -> None:

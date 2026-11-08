@@ -1,5 +1,7 @@
 """Safety tests: policy loading, filters, and the guarded pipeline."""
 
+from pathlib import Path
+
 import pytest
 
 from inference.engine import Generation, InferenceEngine
@@ -10,7 +12,7 @@ from safety.guardrails import Guardrails
 from safety.policy import Policy, Rule, load_policy, match
 from tokenizer.tokenizer import AtlasTokenizer
 
-TOK_DIR = "tokenizer/model/debug"
+TOK_DIR = Path(__file__).resolve().parent / "fixtures" / "tokenizer"
 
 
 # --------------------------------------------------------------------- policy

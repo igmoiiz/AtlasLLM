@@ -1,5 +1,7 @@
 """Generation, sampling, KV-cache, and inference-engine tests."""
 
+from pathlib import Path
+
 import torch
 
 from inference.engine import InferenceEngine
@@ -258,7 +260,7 @@ def test_stepwise_cached_logits_match_full_recompute():
 # -------------------------------------------------------------- engine
 
 
-TOK_DIR = "tokenizer/model/debug"
+TOK_DIR = Path(__file__).resolve().parent / "fixtures" / "tokenizer"
 
 
 def make_tokenizer() -> AtlasTokenizer:

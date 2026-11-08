@@ -8,7 +8,7 @@ A small dense decoder-only Transformer language model, built from scratch on one
 
 A language model is a program that reads text and predicts the next word. Give it "The cat sat on the", and it predicts "mat". Train it on enough text and it learns grammar, facts, and style. This project builds one such program from the basic building blocks, so that every layer is visible and explainable. It is a teaching project and a baseline for larger work (see [AtlasMoE](#relationship)).
 
-The model reads about 26,000 tokens per second during training and uses roughly 0.2 GB of the 8 GB on the GPU, leaving most of the hardware headroom for experiments.
+The 13M small model reads about 26,000 tokens per second during training and uses roughly 0.2 GB of the 8 GB on the GPU. The 48M pretraining model reads about 9,000 tokens per second and peaks at about 2.1 GB, still leaving most of the hardware free. Measured numbers are in [DOCUMENTATION/hardware.md](DOCUMENTATION/hardware.md).
 
 ## Hardware
 
@@ -66,7 +66,7 @@ previously stubbed packages (`evaluation/`, `safety/`, `harness/`,
 | bias            | false  |
 | parameters      | 12,982,784 (measured) |
 
-Alternative configurations live in `configs/`: `debug.yaml` for smoke tests and tiny overfit runs, `medium.yaml` for a larger model. See [index.md](DOCUMENTATION/index.md) for the full picture and [experiments.md](DOCUMENTATION/experiments.md) for the planned experiment matrix.
+Alternative configurations live in `configs/`: `debug.yaml` for smoke tests and tiny overfit runs, `medium.yaml` for a larger model. See [index.md](DOCUMENTATION/index.md) for the full picture and [experiments.md](DOCUMENTATION/experiments.md) for the experiment design and measured comparisons.
 
 ## Setup
 
@@ -128,9 +128,13 @@ See [inference.md](DOCUMENTATION/inference.md).
 ### 4. Run the tests and linter
 
 ```bash
-python -m pytest                # 84 tests
+python -m pytest                # 195 tests
 python -m ruff check .
 ```
+
+The same checks run on GitHub Actions for Python 3.11 and 3.12 on a CPU-only
+Ubuntu runner (`.github/workflows/ci.yml`). CUDA-only checks (VRAM reporting)
+are skipped there and covered on the development machine.
 
 ## Project Structure
 
@@ -164,7 +168,7 @@ The full documentation set, meant to be read as a chain:
 - [Training](DOCUMENTATION/training.md) - loss, optimizer, scheduler, checkpoints
 - [Inference](DOCUMENTATION/inference.md) - generation, sampling, KV cache
 - [Hardware](DOCUMENTATION/hardware.md) - memory budget, device strategy, measured throughput
-- [Experiments](DOCUMENTATION/experiments.md) - planned experiment system
+- [Experiments](DOCUMENTATION/experiments.md) - experiment design and measured comparisons
 - [Safety](DOCUMENTATION/safety.md) - policy-driven guardrails
 - [Harness](DOCUMENTATION/harness.md) - the probe suites and regression gate
 

@@ -19,8 +19,6 @@ import time
 from pathlib import Path
 from typing import Iterator
 
-from datasets import load_dataset
-
 
 def enabled_sources(config: dict) -> list[dict]:
     """Return the enabled sources from ``pipeline.registry``."""
@@ -51,7 +49,13 @@ def stream_hf_rows(identifier: str, hf_split: str, max_documents: int | None) ->
 
     Lazy streaming keeps peak memory flat regardless of dataset size
     (DATA_PIPELINE.md: tokenize/acquire without loading the corpus into RAM).
+
+    ``datasets`` is imported here, not at module scope: acquisition is the only
+    part of the pipeline that needs the optional ``data`` extra, and tests or
+    callers that feed rows directly must not require it.
     """
+    from datasets import load_dataset
+
     stream = load_dataset(identifier, split=hf_split, streaming=True)
     for n, row in enumerate(stream, start=1):
         if max_documents is not None and n > max_documents:

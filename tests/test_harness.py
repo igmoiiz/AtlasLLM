@@ -17,7 +17,7 @@ from tokenizer.tokenizer import AtlasTokenizer
 from training.checkpoint import save_checkpoint
 from training.scheduler import build_lr_scheduler
 
-TOK_DIR = "tokenizer/model/debug"
+TOK_DIR = Path(__file__).resolve().parent / "fixtures" / "tokenizer"
 DEVICE = torch.device("cpu")
 
 
@@ -248,7 +248,7 @@ def _write_checkpoint(path: Path, seed: int = 0, bins: dict | None = None) -> Pa
     sched = build_lr_scheduler(opt, warmup_steps=1, max_steps=10)
     config = {
         "model": asdict(model.config),
-        "data": {"tokenizer_path": TOK_DIR, **(bins or {})},
+        "data": {"tokenizer_path": str(TOK_DIR), **(bins or {})},
         "training": {"batch_size": 1},
     }
     return save_checkpoint(path, model=model, optimizer=opt, scheduler=sched, step=0, config=config, metrics={})

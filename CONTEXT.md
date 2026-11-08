@@ -1,7 +1,14 @@
 # AtlasLLM
 ## Complete Project Execution Specification
 
-**Project Type:** Dense Decoder-Only Transformer Language Model  
+> **Historical specification.** This is the original execution plan (goals,
+> milestones, constraints, requirements) written before implementation. It is
+> kept for provenance, not as a status report; some details (for example the
+> listed OS) no longer match the machine the project runs on. For current state
+> read [README.md](README.md) and [DOCUMENTATION/index.md](DOCUMENTATION/index.md);
+> for session history read [AGENT_CONTEXT.md](AGENT_CONTEXT.md).
+
+**Project Type:** Dense Decoder-Only Transformer Language Model
 **Primary Framework:** PyTorch  
 **Development Machine:** Main desktop PC  
 **GPU:** NVIDIA GTX 1070 — 8 GB VRAM  

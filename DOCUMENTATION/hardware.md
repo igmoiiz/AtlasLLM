@@ -52,7 +52,8 @@ backward and AdamW step at context 256:
 
 Physical VRAM is 8,191.9 MiB. Batches 48 and 64 exceed it without failing:
 Windows overcommits VRAM through host memory, so the step still runs but at
-about one tenth the speed (see below). They are not usable configurations.
+roughly one eighth of the throughput (see below). They are not usable
+configurations.
 
 ### Headroom
 
@@ -75,21 +76,25 @@ the medium scale. See [configs/medium.yaml](../configs/medium.yaml).
 
 Same artifact as the footprint table, 10 timed steps after 3 warmup steps:
 
-| Batch | ms/step | Tokens/sec |
-|-------|--------:|-----------:|
-| 8 | 225.37 | 9,088 |
-| 16 | 396.99 | 10,318 |
-| 24 | 565.40 | 10,867 |
-| 32 | 675.60 | 12,126 |
-| 48 | 9,892.49 | 1,242 |
-| 64 | 19,683.89 | 832 |
+| Batch | ms/step | Tokens/sec | Spills |
+|-------|--------:|-----------:|:------:|
+| 8 | 225.28 | 9,091 | no |
+| 16 | 350.63 | 11,682 | no |
+| 24 | 510.33 | 12,039 | no |
+| 32 | 745.75 | 10,985 | no |
+| 48 | 8,253.86 | 1,489 | yes |
+| 64 | 23,188.73 | 707 | yes |
 
-Throughput rises with batch size up to 32. Batches 48 and 64 are slower by an
-order of magnitude because they ran past physical VRAM and were served from
-host memory; the numbers are recorded, not recommended. The planned v3 training
-configuration stays at batch 8 (2,048 tokens/step), which measured 225 ms/step
-on this machine. At 9,088 tokens/sec, 930M tokens is about 28 hours of pure
-compute before interruptions.
+Throughput plateaus at batches 24 to 32, at 11,000 to 12,000 tokens/sec. Two
+runs of this sweep disagreed on whether 24 or 32 is fastest (12,039 versus
+10,985 here; the earlier run had 32 at 12,126), so the difference between them
+is run-to-run noise on this machine, not a real ordering. Batches 48 and 64 are
+slower by an order of magnitude because they ran past physical VRAM and were
+served from host memory; the numbers are recorded, not recommended. The v3
+training configuration stays at batch 8 (2,048 tokens/step), which measured
+225 ms/step here. At 9,091 tokens/sec, 930M tokens is about 28 hours of pure
+compute before interruptions. Batch 16 would cut that to roughly 22 hours; it
+is left out so the locked v3 plan stays comparable with v2.
 
 Numbers come from measurements on this machine: the 13M row from an actual
 100k-step run (see [training.md](training.md)), the 48M rows from
@@ -117,7 +122,7 @@ backward, AdamW) for each batch size in a grid:
 
 ```bash
 python -m scripts.benchmark --config configs/atlasbase_v2.yaml \
-    --batch-sizes 8 16 24 32 --steps 10 \
+    --batch-sizes 8 16 24 32 48 64 --steps 10 --warmup 3 \
     --out reports/data/hardware/bench_atlasbase_v2.json
 ```
 
@@ -125,11 +130,9 @@ Warmup steps are excluded from timing, the batch is created once and reused,
 and device, dtype and AdamW settings come from the same helpers training uses.
 A configuration that raises out-of-memory is recorded with `oom: true` and the
 grid continues. A configuration that overcommits VRAM on Windows is recorded
-with `spills: true`; its throughput is real but not usable. The sweep committed
-today predates that flag and shows the same outcome as `peak_allocated_mb`
-above `total_mb`. The JSON also carries the device description, parameter
-count, sequence length and hyperparameters, so a benchmark can be compared
-later without guessing.
+with `spills: true`; its throughput is real but not usable. The JSON also
+carries the device description, parameter count, sequence length and
+hyperparameters, so a benchmark can be compared later without guessing.
 
 ## Device strategy
 

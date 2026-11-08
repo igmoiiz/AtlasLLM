@@ -13,7 +13,7 @@ A language model is a program that learns to predict the next word of a text. Th
 3. **Model.** A Transformer: a neural network that reads token history and guesses the next token. See [architecture.md](architecture.md).
 4. **Training.** Repeatedly showing the model real text, measuring how wrong its guesses are, and adjusting its internal numbers to make future guesses better. See [training.md](training.md).
 5. **Inference.** Using the trained model to finish a prompt, one token at a time. See [inference.md](inference.md).
-6. **Measurement.** Fixed probe suites score every checkpoint and a gate catches regressions. See [harness.md](harness.md) and [experiments.md](experiments.md). Guardrails are implemented but opt-in, and monitoring is still planned: [safety.md](safety.md).
+6. **Measurement.** Fixed probe suites score every checkpoint and a gate catches regressions. See [harness.md](harness.md) and [experiments.md](experiments.md). Guardrails are implemented but opt-in ([safety.md](safety.md)), and hardware profiling is covered in [hardware.md](hardware.md).
 
 Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardware.md).
 
@@ -28,7 +28,7 @@ Everything runs on one consumer GPU with 8 GB of memory. See [hardware.md](hardw
 | [training.md](training.md) | Loss, optimizer, scheduler, checkpoints | Active |
 | [inference.md](inference.md) | Generation, sampling, KV cache | Active |
 | [hardware.md](hardware.md) | Memory budget, device strategy, speed | Active |
-| [experiments.md](experiments.md) | Configuration-driven experiment design | Planned |
+| [experiments.md](experiments.md) | Experiment design and measured comparisons | Active, initial results |
 | [safety.md](safety.md) | Policy-driven input/output guardrails | Active |
 | [harness.md](harness.md) | Probe suites, scoring, regression gate | Active |
 
@@ -47,7 +47,7 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | 3 | Dataset pipeline (preprocessing, .bin store) | Done, tested |
 | 4 | Transformer implementation | Done, tested |
 | 5 | Debug training and tiny-overfit verification | Done |
-| 6 | Real pretraining (small config on GPU) | In progress - one 100k-step run, interrupted and resumed at 13k then 20k steps |
+| 6 | Real pretraining (small config on GPU) | Done - 13M (v1) and 48M (v2); v3 on 930M tokens next |
 | 7 | Inference engine (sampling, KV cache, streaming) | Done, tested |
 | 8 | Evaluation suite (perplexity, memorization, probes) | Done, tested |
 | 9 | Instruction tuning | Planned |
@@ -56,7 +56,7 @@ data -> tokenizer -> dataset -> model -> training -> evaluation -> inference -> 
 | 12 | Monitoring (device/VRAM introspection, step benchmark) | Done, tested, measured |
 | 13 | Release (v1.0) | Planned |
 
-**Quality gates currently passing:** 195 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume.
+**Quality gates currently passing:** 195 unit tests in `tests/`, `ruff check .` clean, end-to-end training verified with checkpoint save and resume. CI runs the same lint and test suite on Python 3.11 and 3.12 (CPU-only Ubuntu; CUDA-only checks are skipped there).
 
 For the measured numbers behind the "Done" claims, see [hardware.md](hardware.md) and [training.md](training.md).
 
@@ -71,7 +71,7 @@ Token IDs [B, T]
    ↓
 Token Embedding [B, T, D] + Position Embedding [B, T, D]
    ↓
-Transformer Block × 6
+Transformer Block × n_layers (6 in the small config, 10 in AtlasBase)
    ├── LayerNorm + Multi-Head Causal Self-Attention + Residual
    └── LayerNorm + Feed-Forward Network + Residual
    ↓
@@ -93,13 +93,13 @@ AtlasLLM/
 ├── data_pipeline/      # Dataset loading and preprocessing
 ├── training/           # Training orchestration
 ├── inference/          # Generation engine
-├── evaluation/         # Planned: perplexity and benchmarks
+├── evaluation/         # Perplexity, memorization, generation probes
 ├── safety/             # Policy-driven guardrails (opt-in, external)
 ├── harness/            # Probe suites, scoring, regression gate
-├── monitoring/         # Planned: metrics and profiling
+├── monitoring/         # Device/VRAM introspection, step benchmark
 ├── configs/            # YAML experiment configurations
 ├── scripts/            # CLI utilities
-├── tests/              # Unit tests (84)
+├── tests/              # Unit tests (195)
 ├── DOCUMENTATION/      # This directory
 └── checkpoints/        # Model runs (git-ignored)
 ```
@@ -123,7 +123,7 @@ For an agent or engineer modifying code: start with this page, then read the pag
 - Changing the model: [architecture.md](architecture.md) and [training.md](training.md).
 - Changing text handling: [tokenizer.md](tokenizer.md) and [dataset.md](dataset.md).
 - Changing generation: [inference.md](inference.md) and [training.md](training.md).
-- Planning evaluation or safety work: [experiments.md](experiments.md), [harness.md](harness.md), [safety.md](safety.md).
+- Planning evaluation, safety, or profiling work: [experiments.md](experiments.md), [harness.md](harness.md), [safety.md](safety.md), [hardware.md](hardware.md).
 - Capacity planning: [hardware.md](hardware.md).
 
 ## Related documentation

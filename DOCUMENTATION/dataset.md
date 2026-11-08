@@ -141,6 +141,36 @@ val_path / test_path` plus `meta.json`. Because bins are tokenizer- and
 context-specific, `configs/debug.yaml` writes into `data/processed/debug/` so the
 debug and small datasets do not clobber each other.
 
+### Automated pipeline (registry-driven)
+
+The supported path for real corpora is the staged pipeline:
+
+```bash
+python -m data_pipeline.pipeline --config configs/atlasbase_v2.yaml
+python -m data_pipeline.pipeline --config <config> --stage tokenize --force
+```
+
+It runs `acquire -> process -> tokenizer -> tokenize -> finalize` over the
+sources listed in `pipeline.registry`, and every stage reuses an existing valid
+artifact unless `--force` is passed. Artifacts:
+
+```text
+data/raw/<source>/records.jsonl                  immutable acquired cache
+data/interim/<source>/{train,val,test}.jsonl     filtered documents
+tokenizer/model/<name>/                          trained tokenizer
+data/processed/<name>/{train,val,test}.bin       tokenized streams
+data/processed/<name>/{meta,manifest}.json       split metadata + provenance
+reports/data/<name>/                             statistics report
+```
+
+Acquisition streams each HuggingFace split into the cache, so only the documents
+actually used are downloaded. Processing normalizes, filters, deduplicates, and
+splits each source; tokenization then concatenates the sources in registry order.
+**Weighted mixtures are not implemented yet**: `target_fraction` is declared in
+configs but does not influence token counts. The mixture design is in
+[DATA_PIPELINE.md](../DATA_PIPELINE.md); the v3 corpus plan is in
+[AGENT_CONTEXT.md](../AGENT_CONTEXT.md).
+
 Verify a built dataset:
 
 ```bash
@@ -208,3 +238,4 @@ batch["targets"]    # [B, T] torch.long, input shifted by one token
 - [tokenizer.md](tokenizer.md) - how text is tokenized during preprocessing
 - [training.md](training.md) - how the resulting batches are consumed
 - [scripts/inspect_dataset.py](../scripts/inspect_dataset.py) - verification utility
+- [DATA_PIPELINE.md](../DATA_PIPELINE.md) - full automated pipeline specification

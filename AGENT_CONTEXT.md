@@ -4,7 +4,23 @@ This file is the agent's persistent memory across sessions. Update it after ever
 
 ---
 
-## Last Updated: 2026-09-16
+## Last Updated: 2026-11-08
+
+---
+
+## Current state (2026-11-08)
+
+Where the project actually stands. The rest of this file is a chronological
+session log (oldest first); the newest entry is at the bottom.
+
+- **Model:** 48M (D=512, L=10, H=8, d_ff=2048), context 256, 16k BPE.
+- **Latest trained checkpoint:** AtlasBase-v2 (186M tokens), val ppl 125.0,
+  harness 3/23 answers, mean repetition 0.140.
+- **Implemented and tested:** model, tokenizer, data pipeline (core), training
+  (cosine and WSD schedules, resume), inference, evaluation, harness, safety
+  (opt-in), monitoring. 195 tests, `ruff check .` clean.
+- **Next:** finish Phase 0.8 (docs truth pass) and 0.9 (CI), then build the
+  930M-token AtlasBase-v3 corpus and train it. See the 2026-11-07 entry.
 
 ---
 

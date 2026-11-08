@@ -61,7 +61,7 @@ L = -log(P(x_{t+1} | x_1, ..., x_t))
 
 ## Optimizer
 
-**AdamW** with the following defaults:
+**AdamW** with these defaults (the small config; each config sets its own):
 
 | Parameter | Value |
 |-----------|-------|
@@ -84,7 +84,7 @@ warmup_steps   → max_steps         → cosine decay from max_lr to ~0
 lr = max_lr * 0.5 * (1 + cos(π * progress))
 ```
 
-**`wsd`** (warmup-stable-decay, used by AtlasBase-v3)
+**`wsd`** (warmup-stable-decay, planned for AtlasBase-v3)
 
 ```
 Step 0                 → warmup_steps   → linear warmup from 0 to max_lr
@@ -138,7 +138,7 @@ restores all state and continues from `step + 1` toward `max_steps`.
 **Recovery after an interruption** (power cut, Ctrl-C, overnight crash):
 
 ```bash
-python -m training.train --config configs/atlasbase_v3.yaml --resume auto
+python -m training.train --config configs/atlasbase_v2.yaml --resume auto
 ```
 
 `auto` scans `checkpoint.dir/run_*/` for `last.pt` / `best.pt`, newest first,
@@ -231,15 +231,19 @@ Tiny-overfit test (AGENTS.md rule 24), 512-token stream memorized on GPU:
 loss `7.27 -> 0.039` over 300 steps - full dataset → tokenizer → model → loss
 → optimizer → backward path proven before pretraining.
 
-## Measured performance (run: 100k steps, small config)
+## Measured performance
 
-- Throughput: ~26,000 tokens/sec (~13 steps/sec at batch 8 × context 256)
-- GPU memory: ~217 MB during training steps
-- Checkpoint size: ~156 MB (`last.pt` / `best.pt`)
-- Best validation loss so far: ~6.84 (reached around step 13,000). The current
-  run, interrupted twice and resumed at steps 13k and 20k, continues past that
-  point with train loss still falling but validation loss drifting up toward
-  ~7.1 by step 30k, a mild overfitting signal worth tracking
+| Run | Params | Tokens | Throughput | VRAM peak | Best val loss |
+|-----|--------|--------|-----------|-----------|---------------|
+| AtlasBase-v1 | 13M | 186M | ~26,000 tok/s | ~217 MB | 5.4174 |
+| AtlasBase-v2 | 48M | 186M | 9,091 tok/s | 2,143 MiB | 4.8282 |
+
+Both runs trained 95k steps on the same 186M-token corpus with the same 16k
+tokenizer, so the difference is model capacity. The v2 throughput comes from a
+real training step at batch 8 x context 256 (225 ms/step,
+`reports/data/hardware/bench_atlasbase_v2.json`); the batch-size sweep and the
+Windows VRAM caveat are in [hardware.md](hardware.md). The full comparison table
+is in [experiments.md](experiments.md).
 
 Full hardware context in [hardware.md](hardware.md).
 

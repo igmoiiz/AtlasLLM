@@ -1,5 +1,12 @@
 AtlasLLM — Project Context
 
+> **Historical project context.** Written at initialization and kept for
+> provenance. The status line below is stale: the project is well past
+> initialization. For current state read [README.md](README.md) and
+> [DOCUMENTATION/index.md](DOCUMENTATION/index.md); for session history read
+> [AGENT_CONTEXT.md](AGENT_CONTEXT.md). The OS listed below also differs from
+> the Windows development machine actually used.
+
 Project: AtlasLLM
 Type: Educational dense decoder-only Large Language Model
 Framework: PyTorch

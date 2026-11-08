@@ -114,7 +114,7 @@ that want to write their own audit trail. Chat enables `logging.INFO` when
 ## Use
 
 ```bash
-python -m scripts.chat --checkpoint <ckpt> --config configs/atlasbase_v3.yaml --safety
+python -m scripts.chat --checkpoint <ckpt> --config configs/atlasbase_v2.yaml --safety
 python -m scripts.chat --checkpoint <ckpt> --safety --policy my_policy.yaml
 ```
 

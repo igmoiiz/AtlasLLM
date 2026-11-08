@@ -209,7 +209,7 @@ python -m scripts.chat \
 - Cached and non-cached generation produce identical tokens/text (same seed).
 - Long prompts are truncated to the newest ``context_length - max_new_tokens``
   tokens so generation always has room.
-- Tests in ``tests/test_generation.py``; full suite: 84 passed.
+- Tests in ``tests/test_generation.py``; full suite: 195 passed.
 
 ## Related documentation
 

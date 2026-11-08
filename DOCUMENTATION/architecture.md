@@ -160,6 +160,7 @@ Optionally, the LM head can share weights with the token embedding (`weight_tyin
 | Small   | 6      | 256     | 8     | 1024 | 13M (measured) | ~270 MB    |
 | Medium  | 8      | 384     | 8     | 1536 | ~26M   | ~1.5 GB   |
 | Large   | 12     | 512     | 8     | 2048 | ~85M   | ~3 GB     |
+| AtlasBase (v2/v3) | 10 | 512 | 8 | 2048 | 48M (measured) | ~2.1 GB (measured, batch 8) |
 
 ## Design Decisions
 

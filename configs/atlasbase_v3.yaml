@@ -1,0 +1,134 @@
+# AtlasLLM-Base-v3 - Data step: 186M -> 930M tokens, four-source mixture
+# Evidence: AtlasBase-v2 (48M params, 186M tokens, FineWeb-Edu only) reached
+# val ppl 125.0 and answered 3/23 harness probes. The v2 overfit study in
+# DOCUMENTATION/experiments.md concluded the next gain is data, not capacity,
+# so the model is frozen and this config scales the corpus 5x with a mixture.
+#
+# Mixture (share of the 930M training tokens):
+#   FineWeb-Edu        60%   web prose
+#   Wikipedia          15%   encyclopedic facts
+#   Gutenberg English  15%   long-form narrative
+#   peS2o v2           10%   academic prose
+# Token counts per source are derived from target_fraction; per-source train,
+# validation and test files are written so perplexity can be reported per
+# source. See DOCUMENTATION/dataset.md for the mixing mechanics.
+# Target: GTX 1070 8GB VRAM, batch 8 x context 256 (measured 225 ms/step).
+
+pipeline:
+  dataset:
+    name: "AtlasBase-v3"
+    version: 3
+    # Total training tokens. Fraction budgets other splits from the same ratio.
+    train_tokens: 930000000
+    # Tokens appended per source per interleave round (fractions scale this).
+    mix_chunk_tokens: 4000000
+  paths:
+    raw: "data/raw"
+    interim: "data/interim"
+    reports: "reports/data"
+  registry:
+    - name: fineweb_edu
+      role: pretraining
+      source: huggingface
+      identifier: "HuggingFaceFW/fineweb-edu"
+      hf_split: "train"
+      enabled: true
+      target_fraction: 0.60
+      # Sized from the character budget in processing.acquisition_margin; the
+      # budget stops the download first, this row cap is a hard backstop.
+      max_documents: 600000
+    - name: wikipedia
+      role: pretraining
+      source: huggingface
+      identifier: "wikimedia/wikipedia"
+      hf_split: "train"
+      config_name: "20231101.en"
+      enabled: true
+      target_fraction: 0.15
+      max_documents: 250000
+    - name: gutenberg
+      role: pretraining
+      source: huggingface
+      identifier: "sedthh/gutenberg_english"
+      hf_split: "train"
+      enabled: true
+      target_fraction: 0.15
+      max_documents: 60000
+    - name: pes2o
+      role: pretraining
+      source: huggingface
+      # peS2o v2 full text (Apache-2.0 mirror). The official allenai/peS2o
+      # ships a dataset script and zstd shards, neither loadable by datasets 5.
+      identifier: "laion/Pes2oX-fulltext"
+      hf_split: "train"
+      enabled: true
+      target_fraction: 0.10
+      max_documents: 200000
+  processing:
+    languages: ["en"]
+    # Books and papers are long; the cap only rejects runaway documents.
+    min_chars: 200
+    max_chars: 400000
+    min_alpha_ratio: 0.4
+    dedup: true
+    # Characters per token for English BPE, used to turn token budgets into
+    # the character budgets that stop acquisition and filtering early.
+    chars_per_token: 4.0
+    acquisition_margin: 1.10
+    sample:
+      seed: 42
+      fraction: 1.0
+    split:
+      seed: 42
+      ratios:
+        train: 0.90
+        val: 0.05
+        test: 0.05
+
+model:
+  vocab_size: 16000
+  context_length: 256
+  d_model: 512
+  n_layers: 10
+  n_heads: 8
+  d_ff: 2048
+  dropout: 0.1
+  bias: false
+
+tokenizer:
+  # Retrain on the v3 mixture so merges reflect books and papers too, not just
+  # FineWeb-Edu. Same vocabulary size as v2 for a fair comparison.
+  vocab_size: 16000
+  min_frequency: 2
+
+training:
+  batch_size: 8
+  learning_rate: 2.0e-4
+  weight_decay: 0.1
+  # 930M tokens / (8 x 256) = 454,102 steps. WSD keeps the run resumable and
+  # gives the final 10% a full anneal.
+  max_steps: 454102
+  warmup_steps: 2000
+  schedule: wsd
+  decay_frac: 0.10
+  grad_clip: 1.0
+  seed: 42
+
+data:
+  train_path: "data/processed/atlasbase_v3/train.bin"
+  val_path: "data/processed/atlasbase_v3/val.bin"
+  test_path: "data/processed/atlasbase_v3/test.bin"
+  tokenizer_path: "tokenizer/model/atlasbase_v3"
+
+checkpoint:
+  dir: "checkpoints/atlasbase_v3"
+  save_every: 1000
+
+logging:
+  log_every: 100
+  val_every: 2000
+  max_val_batches: 200
+  tensorboard: true
+
+device: "auto"
+dtype: "float32"

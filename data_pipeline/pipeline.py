@@ -32,7 +32,6 @@ Artifacts:
 import argparse
 import json
 import sys
-from itertools import chain
 from pathlib import Path
 
 import yaml
@@ -63,12 +62,80 @@ def _paths(config: dict) -> dict:
     }
 
 
+def _split_ratios(config: dict) -> list[tuple[str, float]]:
+    """Configured train/val/test ratios as an ordered list."""
+    ratios = _pipeline_cfg(config).get("processing", {}).get("split", {}).get("ratios")
+    if not ratios:
+        return [("train", 0.90), ("val", 0.05), ("test", 0.05)]
+    return [(name, float(value)) for name, value in ratios.items()]
+
+
+def _source_budgets(config: dict) -> dict[str, dict[str, int]]:
+    """Per-source token budgets for train/val/test, from the mixture plan.
+
+    ``pipeline.dataset.train_tokens`` is the total training budget and each
+    source's ``target_fraction`` is its share of it. Validation and test keep
+    the configured split ratio, so a source's val budget is
+    ``train * val_ratio / train_ratio``; validating on the same mixture keeps
+    per-source perplexity comparable to the training distribution.
+
+    Returns an empty dict when the config declares no ``train_tokens``, which
+    means "tokenize each split in full" (the debug and small configs).
+    """
+    dataset = _pipeline_cfg(config).get("dataset", {})
+    total = int(dataset.get("train_tokens") or 0)
+    if total <= 0:
+        return {}
+
+    registry = sources.enabled_sources(config)
+    fractions = [float(source.get("target_fraction", 0.0)) for source in registry]
+    if any(fraction <= 0 for fraction in fractions):
+        raise ValueError(
+            "pipeline.dataset.train_tokens is set, so every enabled source needs "
+            f"a positive target_fraction; got {fractions}"
+        )
+    if abs(sum(fractions) - 1.0) > 1e-6:
+        raise ValueError(
+            f"target_fraction must sum to 1.0, got {sum(fractions):.6f} from {fractions}"
+        )
+
+    ratios = dict(_split_ratios(config))
+    train_ratio = ratios.get("train", 0.90) or 0.90
+    budgets: dict[str, dict[str, int]] = {}
+    for source, fraction in zip(registry, fractions, strict=True):
+        train = round(total * fraction)
+        budgets[source["name"]] = {
+            split: train if split == "train" else round(train * ratios.get(split, 0.0) / train_ratio)
+            for split in _SPLITS
+        }
+    return budgets
+
+
+def _char_budget(config: dict, source_name: str, budgets: dict[str, dict[str, int]]) -> int | None:
+    """Characters to acquire/process for one source before its token cap binds.
+
+    Tokens are the unit the mixture is defined in, but the pipeline reads text.
+    ``chars_per_token`` (default 4.0 for English BPE) converts one to the other
+    and ``acquisition_margin`` (default 1.10) leaves headroom so truncation, not
+    a short stream, is what enforces the cap. Processing stops at the same
+    budget, so acquisition and filtering never do more work than the mixture
+    needs.
+    """
+    if source_name not in budgets:
+        return None
+    proc = _pipeline_cfg(config).get("processing", {})
+    chars_per_token = float(proc.get("chars_per_token", 4.0))
+    margin = float(proc.get("acquisition_margin", 1.10))
+    return round(sum(budgets[source_name].values()) * chars_per_token * margin)
+
+
 # ---------------------------------------------------------------------------
 # Stages
 # ---------------------------------------------------------------------------
 
 def stage_acquire(config: dict, ctx: dict, force: bool) -> None:
     raw_root = _paths(config)[_RAW]
+    budgets = _source_budgets(config)
     for source in sources.enabled_sources(config):
         name = source["name"]
         raw_dir = raw_root / name
@@ -78,6 +145,8 @@ def stage_acquire(config: dict, ctx: dict, force: bool) -> None:
             raw_dir=raw_dir,
             source_name=name,
             max_documents=source.get("max_documents"),
+            max_chars=_char_budget(config, name, budgets),
+            config_name=source.get("config_name"),
         )
         print(f"  [acquire] {name}: {result['status']} "
               f"({result['documents']:,} rows) -> {raw_dir}")
@@ -87,10 +156,12 @@ def stage_acquire(config: dict, ctx: dict, force: bool) -> None:
 def stage_process(config: dict, ctx: dict, force: bool) -> None:
     proc = _pipeline_cfg(config).get("processing", {})
     split_cfg = proc.get("split", {})
-    ratios = [(k, float(v)) for k, v in
-              split_cfg.get("ratios", {"train": 0.90, "val": 0.05, "test": 0.05}).items()]
+    ratios = _split_ratios(config)
     sample_cfg = proc.get("sample", {})
     paths = _paths(config)
+    budgets = _source_budgets(config)
+    dedup = proc.get("dedup", True)
+    seen_hashes: set[str] = set()
 
     for source in (ctx["sources"] or sources.enabled_sources(config)):
         name = source["name"]
@@ -102,6 +173,10 @@ def stage_process(config: dict, ctx: dict, force: bool) -> None:
         if done and not force:
             print(f"  [process] {name}: cached at {interim_dir}")
             ctx["source_stats"].append(_read_json(stats_path))
+            if dedup:
+                # Cached sources still own their documents; load them so later
+                # sources deduplicate against this one as a fresh run would.
+                seen_hashes |= documents.load_document_ids(interim_dir)
             continue
         print(f"  [process] {name}: filtering {source['identifier']}")
         stats = documents.process(
@@ -112,11 +187,13 @@ def stage_process(config: dict, ctx: dict, force: bool) -> None:
             min_chars=proc.get("min_chars", 30),
             max_chars=proc.get("max_chars"),
             min_alpha_ratio=proc.get("min_alpha_ratio", 0.4),
-            dedup=proc.get("dedup", True),
+            dedup=dedup,
             sample_seed=sample_cfg.get("seed", 42),
             sample_fraction=sample_cfg.get("fraction", 1.0),
             split_seed=split_cfg.get("seed", 42),
             split_ratios=ratios,
+            char_budget=_char_budget(config, name, budgets),
+            seen_hashes=seen_hashes if dedup else None,
             interim_dir=interim_dir,
         )
         stats_path.parent.mkdir(parents=True, exist_ok=True)
@@ -184,20 +261,51 @@ def stage_tokenize(config: dict, ctx: dict, force: bool) -> None:
     processed_dir.mkdir(parents=True, exist_ok=True)
     ctx["vocab_size"] = tokenizer.vocab_size
 
+    registry = ctx["sources"] or sources.enabled_sources(config)
+    budgets = _source_budgets(config)
+    chunk_tokens = int(
+        _pipeline_cfg(config).get("dataset", {}).get("mix_chunk_tokens", 4_000_000)
+    )
+    per_source: dict[str, dict[str, Path]] = {split: {} for split in _SPLITS}
+
     for split in _SPLITS:
-        bin_path = processed_dir / f"{split}.bin"
-        if bin_path.is_file() and not force:
-            print(f"  [tokenize] {split}: cached ({bin_path.stat().st_size // 2:,} tokens)")
-            ctx["bin_paths"][split] = bin_path
-            continue
-        records = chain.from_iterable(
-            documents.iter_split_docs(paths[_INTERIM] / src["name"], split)
-            for src in (ctx["sources"] or sources.enabled_sources(config))
+        for source in registry:
+            name = source["name"]
+            bin_path = processed_dir / f"{split}_{name}.bin"
+            budget = budgets.get(name, {}).get(split)
+            if bin_path.is_file() and not force:
+                per_source[split][name] = bin_path
+                print(f"  [tokenize] {split}/{name}: cached "
+                      f"({packing.count_tokens(bin_path):,} tokens)")
+                continue
+            records = documents.iter_split_docs(paths[_INTERIM] / name, split)
+            stats = packing.pack_split(tokenizer, records, bin_path, max_tokens=budget)
+            per_source[split][name] = bin_path
+            note = ""
+            if budget is not None and stats["tokens"] < budget:
+                note = f" (short of the {budget:,} token budget)"
+            print(f"  [tokenize] {split}/{name}: {stats['tokens']:,} tokens "
+                  f"from {stats['documents']:,} docs -> {bin_path}{note}")
+
+        mixed_path = processed_dir / f"{split}.bin"
+        mixed = packing.interleave_bins(
+            [
+                {
+                    "name": source["name"],
+                    "path": per_source[split][source["name"]],
+                    "tokens": packing.count_tokens(per_source[split][source["name"]]),
+                    "fraction": float(source.get("target_fraction", 1.0)),
+                }
+                for source in registry
+            ],
+            mixed_path,
+            chunk_tokens=chunk_tokens,
         )
-        stats = packing.pack_split(tokenizer, records, bin_path)
-        ctx["bin_paths"][split] = bin_path
-        print(f"  [tokenize] {split}: {stats['tokens']:,} tokens "
-              f"from {stats['documents']:,} docs -> {bin_path}")
+        ctx["bin_paths"][split] = mixed_path
+        print(f"  [tokenize] {split}: mixed {mixed['tokens']:,} tokens from "
+              f"{len(mixed['per_source'])} sources -> {mixed_path}")
+
+    ctx["per_source_bins"] = per_source
 
 
 def _merge_source_stats(source_stats: list[dict]) -> dict:
@@ -261,6 +369,14 @@ def stage_finalize(config: dict, ctx: dict) -> dict:
         missing = [str(p) for s in _SPLITS
                    if not (p := bin_paths.get(s)) or not p.is_file()]
         raise FileNotFoundError(f"Cannot finalize: missing token files {missing}")
+    per_source_bins = ctx.get("per_source_bins") or {
+        split: {
+            source["name"]: path
+            for source in sources_used
+            if (path := paths["processed"] / f"{split}_{source['name']}.bin").is_file()
+        }
+        for split in _SPLITS
+    }
     model_cfg = config.get("model", {})
     processed_dir = paths["processed"]
     vocab_size = ctx.get("vocab_size") or model_cfg["vocab_size"]
@@ -271,6 +387,7 @@ def stage_finalize(config: dict, ctx: dict) -> dict:
         vocab_size=vocab_size,
         tokenizer_path=str(paths["tokenizer"]),
         meta_path=processed_dir / "meta.json",
+        per_source=per_source_bins,
     )
 
     pipeline_cfg = _pipeline_cfg(config)

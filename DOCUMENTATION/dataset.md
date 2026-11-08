@@ -165,11 +165,49 @@ reports/data/<name>/                             statistics report
 
 Acquisition streams each HuggingFace split into the cache, so only the documents
 actually used are downloaded. Processing normalizes, filters, deduplicates, and
-splits each source; tokenization then concatenates the sources in registry order.
-**Weighted mixtures are not implemented yet**: `target_fraction` is declared in
-configs but does not influence token counts. The mixture design is in
-[DATA_PIPELINE.md](../DATA_PIPELINE.md); the v3 corpus plan is in
-[AGENT_CONTEXT.md](../AGENT_CONTEXT.md).
+splits each source; tokenization then writes one bounded `.bin` per source per
+split and composes the split the trainer reads by interleaving them.
+
+### Weighted mixture
+
+A config that sets `pipeline.dataset.train_tokens` builds a mixture instead of
+a concatenation:
+
+- `pipeline.registry[].target_fraction` is each source's share of the training
+  budget; the fractions must sum to 1.0 and the pipeline refuses to run
+  otherwise.
+- Per-source budgets are derived from it: `train = train_tokens * fraction`,
+  `val = train * val_ratio / train_ratio` (same for test). Validation therefore
+  follows the same mixture as training, which keeps per-source perplexity
+  comparable.
+- Acquisition and processing stop at a character budget,
+  `sum(budgets) * chars_per_token * acquisition_margin` (defaults 4.0 and 1.10
+  for English BPE). Tokens are the unit the mixture is defined in, but the
+  pipeline reads text; the estimate is deliberately generous so truncation, not
+  a short stream, enforces the cap. `source.json` records the realised character
+  count and `processing_stats.json` records `char_budget.reached`.
+- Deduplication is shared: one document-id set spans all sources, so a page that
+  appears in two sources is kept once, by the first source in registry order.
+  The kept ids are written to `data/interim/<source>/document_ids.txt`, so a
+  resumed build deduplicates exactly like a fresh one.
+- `pack_split(max_tokens=...)` truncates a source at its exact token budget;
+  `interleave_bins` then appends chunks from every source, sized by
+  `target_fraction * mix_chunk_tokens`, so a contiguous slice of `train.bin`
+  reflects the mixture rather than one source's block. `meta.json` and
+  `manifest.json` record realised tokens per source per split, so a source that
+  came up short is visible instead of silently skewing the mixture.
+
+Artifacts for a mixture (per source plus the mixed split):
+
+```text
+data/processed/<name>/train_<source>.bin   bounded per-source stream
+data/processed/<name>/{train,val,test}.bin interleaved mixture for training
+data/processed/<name>/meta.json            per-source and mixed token counts
+```
+
+The v3 corpus uses 930M training tokens over FineWeb-Edu 60%, Wikipedia 15%,
+Gutenberg 15% and peS2o 10%; see [configs/atlasbase_v3.yaml](../configs/atlasbase_v3.yaml)
+and [AGENT_CONTEXT.md](../AGENT_CONTEXT.md).
 
 Verify a built dataset:
 

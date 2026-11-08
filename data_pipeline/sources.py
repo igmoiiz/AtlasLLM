@@ -36,19 +36,32 @@ def dataset_version_id(identifier: str, hf_split: str) -> str:
 
 
 def _row_text(row: dict) -> str | None:
-    """Extract plain text from a dataset row against the common field names."""
-    for key in ("text", "content", "story"):
+    """Extract plain text from a dataset row against the common field names.
+
+    ``TEXT`` (uppercase) is the field name used by ``sedthh/gutenberg_english``;
+    the rest cover the usual conventions. A registry entry does not need to
+    declare its field because every source advertises one of these names.
+    """
+    for key in ("text", "TEXT", "content", "story"):
         value = row.get(key)
         if isinstance(value, str) and value.strip():
             return value
     return None
 
 
-def stream_hf_rows(identifier: str, hf_split: str, max_documents: int | None) -> Iterator[str]:
+def stream_hf_rows(
+    identifier: str,
+    hf_split: str,
+    max_documents: int | None,
+    config_name: str | None = None,
+) -> Iterator[str]:
     """Yield raw text rows from a HuggingFace dataset split.
 
     Lazy streaming keeps peak memory flat regardless of dataset size
     (DATA_PIPELINE.md: tokenize/acquire without loading the corpus into RAM).
+
+    ``config_name`` selects a dataset configuration; ``wikimedia/wikipedia``
+    needs one (``20231101.en``) because the default config does not exist.
 
     ``datasets`` is imported here, not at module scope: acquisition is the only
     part of the pipeline that needs the optional ``data`` extra, and tests or
@@ -56,7 +69,10 @@ def stream_hf_rows(identifier: str, hf_split: str, max_documents: int | None) ->
     """
     from datasets import load_dataset
 
-    stream = load_dataset(identifier, split=hf_split, streaming=True)
+    if config_name:
+        stream = load_dataset(identifier, config_name, split=hf_split, streaming=True)
+    else:
+        stream = load_dataset(identifier, split=hf_split, streaming=True)
     for n, row in enumerate(stream, start=1):
         if max_documents is not None and n > max_documents:
             break
@@ -71,6 +87,8 @@ def acquire(
     raw_dir: Path,
     source_name: str,
     max_documents: int | None = None,
+    max_chars: int | None = None,
+    config_name: str | None = None,
     rows: Iterator[str] | None = None,
 ) -> dict:
     """Stream a dataset split into the immutable raw cache.
@@ -80,7 +98,13 @@ def acquire(
         hf_split: dataset split to stream (e.g. ``train``).
         raw_dir: destination directory (``data/raw/<name>``).
         source_name: registry name, recorded for provenance.
-        max_documents: bounded download cap.
+        max_documents: bounded download cap in rows.
+        max_chars: bounded download cap in characters. This is the cap that
+            matters for a token budget: documents vary in size by orders of
+            magnitude across sources, so a row cap alone either over-downloads
+            or stops short.
+        config_name: HuggingFace dataset configuration (``wikimedia/wikipedia``
+            requires one).
         rows: optional pre-built iterator (tests inject synthetic rows here).
 
     Returns:
@@ -92,21 +116,32 @@ def acquire(
 
     if records_path.is_file() and source_path.is_file():
         prior = json.loads(source_path.read_text(encoding="utf-8"))
-        if prior.get("identifier") == identifier and prior.get("hf_split") == hf_split:
+        if (
+            prior.get("identifier") == identifier
+            and prior.get("hf_split") == hf_split
+            and prior.get("config_name") == config_name
+        ):
             return {"status": "cached", "documents": prior["documents"], "source": prior}
 
-    row_iter = rows if rows is not None else stream_hf_rows(identifier, hf_split, max_documents)
+    row_iter = (
+        rows if rows is not None
+        else stream_hf_rows(identifier, hf_split, max_documents, config_name)
+    )
 
     raw_dir.mkdir(parents=True, exist_ok=True)
     count = 0
+    chars = 0
     with open(records_path, "w", encoding="utf-8", newline="\n") as out:
         n = 0
         for text in row_iter:
             n += 1
             if max_documents is not None and n > max_documents:
                 break
+            if max_chars is not None and chars >= max_chars:
+                break
             out.write(json.dumps({"text": text}, ensure_ascii=False) + "\n")
             count += 1
+            chars += len(text)
 
     if count == 0:
         raise ValueError(f"Source {identifier} ({hf_split}) produced no usable rows")
@@ -114,8 +149,12 @@ def acquire(
     info = {
         "identifier": identifier,
         "hf_split": hf_split,
+        "config_name": config_name,
         "source": source_name,
         "documents": count,
+        "chars": chars,
+        "max_documents": max_documents,
+        "max_chars": max_chars,
         "version_id": dataset_version_id(identifier, hf_split),
         "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "raw_file": str(records_path),

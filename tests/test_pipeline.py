@@ -265,6 +265,141 @@ def test_packing_deterministic(tmp_path: Path, tokenizer: AtlasTokenizer) -> Non
     assert a.read_bytes() == b.read_bytes()
 
 
+# ---------------------------------------------------------------------------
+# mixture: character budgets, cross-source dedup, bounded packing, interleave
+# ---------------------------------------------------------------------------
+
+def test_acquire_stops_at_char_budget(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    result = sources.acquire(
+        identifier="test/ds", hf_split="train", raw_dir=raw_dir,
+        source_name="charsource", max_chars=350, rows=iter(["x" * 100] * 10),
+    )
+    # Four rows (400 chars) cross the 350-character budget; the fifth is never read.
+    assert result["documents"] == 4
+    info = json.loads((raw_dir / "source.json").read_text(encoding="utf-8"))
+    assert info["max_chars"] == 350
+    assert info["chars"] == 400
+
+
+def test_process_shared_dedup_keeps_one_copy_across_sources(tmp_path: Path) -> None:
+    text = "The same paragraph appears in two different sources and must be kept once."
+    first = docs.process(
+        iter([{"text": text}]), source_name="a", dataset_identifier="ds/a",
+        languages=["en"], min_chars=10, interim_dir=tmp_path / "a",
+    )
+    seen = docs.load_document_ids(tmp_path / "a")
+    second = docs.process(
+        iter([{"text": text}]), source_name="b", dataset_identifier="ds/b",
+        languages=["en"], min_chars=10, seen_hashes=seen, interim_dir=tmp_path / "b",
+    )
+    assert first["total_documents"] == 1
+    assert second["total_documents"] == 0
+    assert second["rejection_reasons"]["duplicate"] == 1
+
+
+def test_process_stops_at_char_budget(tmp_path: Path) -> None:
+    rows = [{"text": f"The sentence number {i} is here and it has the words."} for i in range(50)]
+    stats = docs.process(
+        iter(rows), source_name="s", dataset_identifier="ds", languages=["en"],
+        min_chars=10, char_budget=200, interim_dir=tmp_path,
+    )
+    kept = stats["char_stats"]["total"]
+    assert stats["char_budget"]["reached"] is True
+    assert 200 <= kept < 200 + max(len(row["text"]) for row in rows)
+
+
+def test_pack_split_truncates_at_exact_token_budget(
+    tmp_path: Path, tokenizer: AtlasTokenizer
+) -> None:
+    records = [{"text": "The quick brown fox jumps over the lazy dog."} for _ in range(20)]
+    bin_path = tmp_path / "capped.bin"
+    stats = packing.pack_split(tokenizer, iter(records), bin_path, max_tokens=25)
+    assert stats["tokens"] == 25
+    assert stats["truncated"] is True
+    assert packing.count_tokens(bin_path) == 25
+
+
+def test_interleave_bins_alternates_sources(tmp_path: Path) -> None:
+    np.arange(0, 100, dtype=np.uint16).tofile(tmp_path / "a.bin")
+    np.arange(1000, 1100, dtype=np.uint16).tofile(tmp_path / "b.bin")
+    result = packing.interleave_bins(
+        [
+            {"name": "a", "path": tmp_path / "a.bin", "tokens": 100, "fraction": 0.5},
+            {"name": "b", "path": tmp_path / "b.bin", "tokens": 100, "fraction": 0.5},
+            {"name": "empty", "path": tmp_path / "missing.bin", "tokens": 0, "fraction": 0.0},
+        ],
+        tmp_path / "mix.bin",
+        chunk_tokens=20,
+    )
+    data = np.fromfile(tmp_path / "mix.bin", dtype=np.uint16)
+    assert result["tokens"] == 200
+    assert result["per_source"] == {"a": 100, "b": 100}
+    assert list(data[:10]) == list(range(10))
+    assert list(data[10:20]) == list(range(1000, 1010))
+
+
+def test_budgeted_config_requires_a_valid_fraction_sum(tmp_path: Path) -> None:
+    config = _pipeline_config(tmp_path)
+    config["pipeline"]["dataset"]["train_tokens"] = 1000
+    with pytest.raises(ValueError, match="positive target_fraction"):
+        pipeline._source_budgets(config)
+    config["pipeline"]["registry"][0]["target_fraction"] = 0.8
+    with pytest.raises(ValueError, match="sum to 1.0"):
+        pipeline._source_budgets(config)
+
+
+def test_pipeline_builds_weighted_mixture_with_per_source_bins(tmp_path: Path) -> None:
+    config = _pipeline_config(tmp_path)
+    config["pipeline"]["dataset"].update({"train_tokens": 400, "mix_chunk_tokens": 64})
+    # The character estimate is tokenizer-specific; the toy tokenizer packs
+    # fewer characters per token than the 16k BPE, so ask for more text.
+    config["pipeline"]["processing"]["chars_per_token"] = 8.0
+    config["pipeline"]["registry"] = [
+        {
+            "name": "alpha", "role": "test", "source": "test",
+            "identifier": "test/alpha", "hf_split": "train", "enabled": True,
+            "target_fraction": 0.5,
+        },
+        {
+            "name": "beta", "role": "test", "source": "test",
+            "identifier": "test/beta", "hf_split": "train", "enabled": True,
+            "target_fraction": 0.5,
+        },
+    ]
+    for name in ("alpha", "beta"):
+        sources.acquire(
+            identifier=f"test/{name}", hf_split="train",
+            raw_dir=pipeline._paths(config)["raw"] / name, source_name=name,
+            rows=iter(f"The {name} story number {i} is about a fox and the river." for i in range(400)),
+        )
+
+    ctx = {"sources": [], "source_stats": [], "tokenizer_stats": {}, "bin_paths": {}}
+    ctx["sources"].extend(sources.enabled_sources(config))
+    pipeline.stage_process(config, ctx, force=False)
+    pipeline.stage_tokenizer(config, ctx, force=False)
+    pipeline.stage_tokenize(config, ctx, force=False)
+    manifest_obj = pipeline.stage_finalize(config, ctx)
+
+    processed = Path(config["data"]["train_path"]).parent
+    for name in ("alpha", "beta"):
+        for split in ("train", "val", "test"):
+            assert (processed / f"{split}_{name}.bin").is_file()
+
+    per_source = manifest_obj["metadata"]["per_source_tokens"]["train"]
+    assert per_source["beta"] == 200  # the cap binds when the source has enough text
+    assert 0 < per_source["alpha"] < 200
+    assert manifest_obj["metadata"]["splits"]["train"]["tokens"] == sum(per_source.values())
+
+    # The mixed stream is chunk-interleaved, not source-ordered concatenation.
+    mixed = np.fromfile(processed / "train.bin", dtype=np.uint16)
+    alpha = np.fromfile(processed / "train_alpha.bin", dtype=np.uint16)
+    beta = np.fromfile(processed / "train_beta.bin", dtype=np.uint16)
+    assert np.array_equal(mixed[:32], alpha[:32])
+    assert np.array_equal(mixed[32:64], beta[:32])
+    assert not np.array_equal(mixed[:200], alpha)
+
+
 def test_validate_bin_rejects_odd_bytes_and_range(tmp_path: Path, tokenizer: AtlasTokenizer) -> None:
     records = _split_records("hello world")
     bin_path = tmp_path / "train.bin"

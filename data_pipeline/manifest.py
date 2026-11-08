@@ -97,6 +97,7 @@ def build_manifest(
             "model_vocab_size": config.get("model", {}).get("vocab_size"),
             "context_length": meta["context_length"],
             "training_seed": config.get("training", {}).get("seed"),
+            "target_train_tokens": config.get("pipeline", {}).get("dataset", {}).get("train_tokens"),
         },
         "sources": sources,
         "processing": {
@@ -117,6 +118,11 @@ def build_manifest(
                           for split in ("train", "val", "test")},
             "total_documents": processing_stats["total_documents"],
             "splits": split_stats,
+            "per_source_tokens": {
+                split: {name: entry["tokens"] for name, entry in source_splits.items()}
+                for split, source_splits in meta.get("per_source", {}).items()
+                if source_splits
+            },
             "max_token_id": max_token_id,
             "python": platform.python_version(),
             "torch": torch.__version__,
@@ -145,6 +151,10 @@ def write_reports(manifest: dict, processing_stats: dict, output_dir: Path) -> N
         lines.append(f"  {split:5s}: {count:>8,} docs  {info.get('tokens', 0):>14,} tokens  "
                      f"{info.get('sequences', 0):>10,} sequences")
     lines.append(f"Sources: {json.dumps(manifest['processing']['source_distribution'])}")
+    per_source_tokens = manifest["metadata"].get("per_source_tokens", {})
+    for split, tokens in per_source_tokens.items():
+        if tokens:
+            lines.append(f"  {split} tokens per source: {json.dumps(tokens)}")
     lines.append(f"Language labels: {json.dumps(manifest['processing'].get('language_distribution', {}))}")
     lines.append(f"Rejection reasons: {json.dumps(manifest['processing']['rejection_reasons'])}")
     char_stats = manifest["processing"]["char_stats"]

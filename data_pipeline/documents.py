@@ -172,6 +172,19 @@ def is_duplicate(doc_id: str, seen: set[str]) -> bool:
     return False
 
 
+def load_document_ids(interim_dir: Path) -> set[str]:
+    """Read the ids of documents kept by a previous processing pass.
+
+    Re-processing a cached source is skipped, so a later source in the same
+    build would otherwise not see its documents when deduplicating across
+    sources. Loading the ids makes a resumed build behave like a fresh one.
+    """
+    path = Path(interim_dir) / "document_ids.txt"
+    if not path.is_file():
+        return set()
+    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
 # ---------------------------------------------------------------------------
 
 # Deterministic sampling (DATA_PIPELINE.md: "seed = 42, target_tokens =
@@ -230,12 +243,26 @@ def process(
     sample_fraction: float = 1.0,
     split_seed: int = 42,
     split_ratios: list[tuple[str, float]] | None = None,
+    char_budget: int | None = None,
+    seen_hashes: set[str] | None = None,
     interim_dir: Path,
 ) -> dict:
     """Streaming processing pass over raw records.
 
+    Args:
+        max_chars: per-document length cap (a quality filter).
+        char_budget: stop after keeping roughly this many characters. Character
+            counts, not document counts, are what a token budget maps onto
+            across sources with very different document sizes.
+        seen_hashes: deduplication set shared across sources. When omitted the
+            pass deduplicates within the source only. The caller passes one set
+            for the whole build so a page that appears in two sources is kept
+            once, by the first source in registry order.
+
     Returns a stats dict with per-stage accepted/rejected counts suitable
-    for the manifest.  Per-split JSONL files are written to ``interim_dir``.
+    for the manifest.  Per-split JSONL files and ``document_ids.txt`` (the kept
+    ids, for cross-source dedup on a resumed build) are written to
+    ``interim_dir``.
     """
     if split_ratios is None:
         split_ratios = [("train", 0.90), ("val", 0.05), ("test", 0.05)]
@@ -246,13 +273,16 @@ def process(
     reasons: Counter = Counter()
     languages_counter: Counter = Counter()
     source_dist: Counter = Counter()
-    seen_hashes: set[str] = set()
+    seen_hashes = seen_hashes if seen_hashes is not None else set()
     split_counters: Counter = Counter()
 
     char_counts: list[int] = []
+    chars_kept = 0
+    budget_reached = False
 
     handles = {name: open(interim_dir / f"{name}.jsonl", "w", encoding="utf-8", newline="\n")
                for name, _ in split_ratios}
+    ids_handle = open(interim_dir / "document_ids.txt", "w", encoding="utf-8", newline="\n")
     try:
         for row in raw_iter:
             text = row["text"]
@@ -292,12 +322,18 @@ def process(
                 "metadata": {"chars": len(text_clean)},
             }
             handles[split].write(json.dumps(rec, ensure_ascii=False) + "\n")
+            ids_handle.write(did + "\n")
             split_counters[split] += 1
             source_dist[source_name] += 1
             char_counts.append(len(text_clean))
+            chars_kept += len(text_clean)
+            if char_budget is not None and chars_kept >= char_budget:
+                budget_reached = True
+                break
     finally:
         for h in handles.values():
             h.close()
+        ids_handle.close()
 
     char_arr = sorted(char_counts) if char_counts else [0]
     total = len(char_counts)
@@ -316,6 +352,7 @@ def process(
             "mean": sum(char_counts) / max(total, 1),
             "max": char_arr[-1],
         },
+        "char_budget": {"limit": char_budget, "kept": chars_kept, "reached": budget_reached},
         "split_counts": dict(split_counters),
     }
 

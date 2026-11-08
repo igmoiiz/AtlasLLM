@@ -1,8 +1,7 @@
 DATA_PIPELINE.md — AtlasLLM Automated Dataset Pipeline
 
 > **Design specification.** This describes the automated pipeline the
-> implementation follows. Not every item is built yet (the weighted mixture is
-> the next major piece). For what runs today see
+> implementation follows. For what runs today see
 > [DOCUMENTATION/dataset.md](DOCUMENTATION/dataset.md); for current state and
 > next steps see [README.md](README.md) and
 > [AGENT_CONTEXT.md](AGENT_CONTEXT.md).
